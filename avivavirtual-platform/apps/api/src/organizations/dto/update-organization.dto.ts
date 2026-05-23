@@ -1,4 +1,4 @@
-import { LanguageType } from '@prisma/client';
+import { LanguageType, Prisma } from '@prisma/client';
 import { IsBoolean, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdateOrganizationDto {
@@ -18,11 +18,11 @@ export class UpdateOrganizationDto {
 export class UpdateClientSettingsDto {
   @IsOptional()
   @IsObject()
-  supportHours?: Record<string, unknown>;
+  supportHours?: Prisma.InputJsonObject;
 
   @IsOptional()
   @IsObject()
-  escalationRules?: Record<string, unknown>;
+  escalationRules?: Prisma.InputJsonObject;
 
   @IsOptional()
   @IsEnum(LanguageType)

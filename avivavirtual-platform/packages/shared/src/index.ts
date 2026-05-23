@@ -5,6 +5,7 @@ export enum Role {
   CUSTOMER = 'CUSTOMER'
 }
 
+
 export enum TicketStatus {
   NEW = 'NEW',
   OPEN = 'OPEN',

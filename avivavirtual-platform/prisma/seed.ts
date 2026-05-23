@@ -15,6 +15,15 @@ import {
 const prisma = new PrismaClient();
 
 async function main() {
+  const existingDemoUser = await prisma.user.findUnique({
+    where: { email: 'superadmin@avivavirtual.ca' }
+  });
+
+  if (existingDemoUser) {
+    console.log('Seed data already exists');
+    return;
+  }
+
   const org = await prisma.organization.create({
     data: {
       name: 'Demo Business',

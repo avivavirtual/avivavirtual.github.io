@@ -26,7 +26,8 @@ Avivavirtual is a multi-tenant, AI-powered customer care SaaS platform for Canad
    ```bash
    cp .env.example .env
    ```
-4. Start local stack:
+4. For Gemini-powered customer chat replies, edit `.env` and set `GEMINI_API_KEY` to your real Gemini API key. If you leave it empty or as a placeholder, the chat still works, but it uses a local fallback response instead of the Gemini API.
+5. Start local stack:
    ```bash
    docker compose up --build
    ```
