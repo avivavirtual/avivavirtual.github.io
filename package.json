@@ -1,0 +1,32 @@
+{
+  "name": "avivavirtual-platform",
+  "private": true,
+  "version": "2.0.0",
+  "description": "AvivaVirtual multi-tenant AI customer care outsourcing platform.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "node --test tests/**/*.test.mjs",
+    "typecheck": "turbo typecheck",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "tsx prisma/seed.ts",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:functional": "node --test tests/functional/*.test.mjs",
+    "test:workspaces": "turbo test",
+    "check:registry": "node scripts/check-registry-access.mjs",
+    "review": "npm test && npm run check:registry"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.12",
+    "prisma": "^5.18.0",
+    "tsx": "^4.16.2",
+    "turbo": "^2.0.9",
+    "typescript": "^5.5.4"
+  }
+}

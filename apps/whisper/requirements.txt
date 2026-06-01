@@ -1,0 +1,9 @@
+faster-whisper
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+aiofiles
+structlog
+prometheus-fastapi-instrumentator
+ffmpeg-python

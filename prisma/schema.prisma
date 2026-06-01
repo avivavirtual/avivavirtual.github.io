@@ -1,0 +1,504 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+enum Role { SUPER_ADMIN OPS_MANAGER CLIENT_ADMIN AGENT CUSTOMER }
+enum Language { EN FR }
+enum Channel { VOICE CHAT EMAIL }
+enum ContactStatus { QUEUED AI_ACTIVE ESCALATED ASSIGNED RESOLVED CLOSED ABANDONED }
+enum TicketStatus { OPEN IN_PROGRESS PENDING_CLIENT RESOLVED CLOSED }
+enum TicketPriority { LOW MEDIUM HIGH URGENT }
+enum ArticleStatus { DRAFT UNDER_REVIEW APPROVED ARCHIVED }
+enum AgentAvailability { AVAILABLE BUSY AWAY OFFLINE ON_CALL }
+enum TranscriptionStatus { PENDING QUEUED DOWNLOADING TRANSCRIBING SUMMARIZING COMPLETED FAILED SKIPPED }
+enum EscalationReason { LOW_CONFIDENCE CUSTOMER_REQUEST AGENT_OVERRIDE COMPLEX_ISSUE COMPLAINT MAX_TURNS_REACHED }
+enum IntentCategory { BILLING_INQUIRY TECHNICAL_SUPPORT ACCOUNT_MANAGEMENT APPOINTMENT_SCHEDULING GENERAL_INQUIRY COMPLAINT CANCELLATION SALES OTHER }
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  firstName String
+  lastName String
+  role Role @default(AGENT)
+  isActive Boolean @default(true)
+  avatarUrl String?
+  phoneNumber String?
+  availability AgentAvailability @default(OFFLINE)
+  clientAssignments AgentClientAssignment[]
+  organizationId String?
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  auditLogs AuditLog[]
+  sentMessages Message[]
+  assignedContacts Contact[] @relation("AssignedAgent")
+  assignedTickets Ticket[] @relation("AssignedTicket")
+  createdTickets Ticket[] @relation("CreatedTicket")
+  ticketComments TicketComment[]
+  callRecords CallRecord[] @relation("AgentCall")
+  sipCredentials AgentSipCredentials?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id String @id @default(cuid())
+  token String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Organization {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  industry String?
+  logoUrl String?
+  primaryColor String @default("#0EA5E9")
+  isActive Boolean @default(true)
+  contractStart DateTime?
+  contractEnd DateTime?
+  users User[]
+  agentAssignments AgentClientAssignment[]
+  customers Customer[]
+  contacts Contact[]
+  tickets Ticket[]
+  kbArticles KnowledgeBaseArticle[]
+  kbFiles KnowledgeBaseFile[]
+  embeddings Embedding[]
+  aiPersona AIPersona?
+  aiSettings AISettings?
+  clientSettings ClientSettings?
+  slaConfig SLAConfig?
+  channels ClientChannel[]
+  callRecords CallRecord[]
+  callbackRequests CallbackRequest[]
+  chatWidget ChatWidget?
+  subscription Subscription?
+  auditLogs AuditLog[]
+  webhooks ClientWebhook[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentClientAssignment {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  @@unique([userId, organizationId])
+}
+
+model AIPersona {
+  id String @id @default(cuid())
+  organizationId String @unique
+  organization Organization @relation(fields: [organizationId], references: [id])
+  name String @default("Ava")
+  greetingEN String @default("Hi! I'm Ava, your virtual assistant. How can I help you today?")
+  greetingFR String @default("Bonjour! Je suis Ava, votre assistante virtuelle. Comment puis-je vous aider?")
+  voiceEN String @default("nova")
+  voiceFR String @default("nova")
+  systemPromptEN String @db.Text
+  systemPromptFR String @db.Text
+  escalationMsgEN String @default("I want to make sure you get the right help. Let me connect you with a specialist.")
+  escalationMsgFR String @default("Je veux m'assurer que vous recevez la bonne aide. Je vous mets en contact avec un spécialiste.")
+  maxTurnsBeforeEscalate Int @default(10)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AISettings {
+  id String @id @default(cuid())
+  organizationId String @unique
+  organization Organization @relation(fields: [organizationId], references: [id])
+  enabled Boolean @default(true)
+  confidenceThreshold Float @default(0.75)
+  retrievalTopK Int @default(5)
+  chatModel String @default("gpt-4o-mini")
+  suggestionModel String @default("gpt-4o")
+  maxResponseTokens Int @default(600)
+  enableIntentClassify Boolean @default(true)
+  enableAgenticTools Boolean @default(true)
+  enableVoiceAI Boolean @default(false)
+  ttsVoice String @default("nova")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClientSettings {
+  id String @id @default(cuid())
+  organizationId String @unique
+  organization Organization @relation(fields: [organizationId], references: [id])
+  supportEmail String?
+  timezone String @default("America/Toronto")
+  businessHoursStart String @default("09:00")
+  businessHoursEnd String @default("17:00")
+  businessDays Int[] @default([1,2,3,4,5])
+  afterHoursBehaviour String @default("voicemail")
+  defaultLanguage Language @default(EN)
+  bilingualSupport Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SLAConfig {
+  id String @id @default(cuid())
+  organizationId String @unique
+  organization Organization @relation(fields: [organizationId], references: [id])
+  lowHours Int @default(72)
+  mediumHours Int @default(24)
+  highHours Int @default(8)
+  urgentHours Int @default(2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClientChannel {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  type Channel
+  identifier String
+  label String?
+  isActive Boolean @default(true)
+  config Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([organizationId, type, identifier])
+}
+
+model ChatWidget {
+  id String @id @default(cuid())
+  organizationId String @unique
+  organization Organization @relation(fields: [organizationId], references: [id])
+  embedKey String @unique @default(cuid())
+  primaryColor String @default("#0EA5E9")
+  headerLogoUrl String?
+  greetingEN String @default("Hi! How can we help you today?")
+  greetingFR String @default("Bonjour! Comment pouvons-nous vous aider?")
+  position String @default("bottom-right")
+  requireEmail Boolean @default(true)
+  requireName Boolean @default(true)
+  requireConsent Boolean @default(true)
+  showRating Boolean @default(true)
+  allowedDomains String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClientWebhook {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  name String
+  toolName String
+  url String
+  method String @default("POST")
+  headers Json?
+  description String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([organizationId, toolName])
+}
+
+model Customer {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  email String?
+  firstName String?
+  lastName String?
+  phoneNumber String?
+  language Language @default(EN)
+  pipedaConsent Boolean @default(false)
+  consentAt DateTime?
+  externalId String?
+  metadata Json?
+  contacts Contact[]
+  tickets Ticket[]
+  callRecords CallRecord[] @relation("CustomerCall")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([organizationId, email])
+}
+
+model Contact {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  channel Channel
+  customerId String?
+  customer Customer? @relation(fields: [customerId], references: [id])
+  assignedAgentId String?
+  assignedAgent User? @relation("AssignedAgent", fields: [assignedAgentId], references: [id])
+  status ContactStatus @default(QUEUED)
+  language Language @default(EN)
+  intent IntentCategory?
+  intentConfidence Float?
+  escalated Boolean @default(false)
+  escalationReason EscalationReason?
+  aiSummary String? @db.Text
+  aiTurns Int @default(0)
+  aiContained Boolean @default(false)
+  rating Int?
+  ratedAt DateTime?
+  wrapUpCode String?
+  wrapUpNotes String? @db.Text
+  startedAt DateTime @default(now())
+  answeredAt DateTime?
+  escalatedAt DateTime?
+  closedAt DateTime?
+  messages Message[]
+  tickets Ticket[]
+  callRecords CallRecord[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id String @id @default(cuid())
+  contactId String
+  contact Contact @relation(fields: [contactId], references: [id])
+  senderId String?
+  sender User? @relation(fields: [senderId], references: [id])
+  senderType String
+  content String @db.Text
+  isInternal Boolean @default(false)
+  type String @default("TEXT")
+  metadata Json?
+  tokensUsed Int?
+  aiConfidence Float?
+  retrievedChunks Json?
+  fileUrl String?
+  fileName String?
+  createdAt DateTime @default(now())
+}
+
+model KnowledgeBaseArticle {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  title String
+  content String @db.Text
+  status ArticleStatus @default(DRAFT)
+  tags String[]
+  category String?
+  sourceFileId String?
+  embeddings Embedding[]
+  reviewedBy String?
+  publishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([organizationId, title])
+}
+
+model KnowledgeBaseFile {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  fileName String
+  fileUrl String
+  mimeType String
+  fileSizeBytes Int
+  extractedText String? @db.Text
+  pageCount Int?
+  processingStatus String @default("pending")
+  articleIds String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Embedding {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  articleId String
+  article KnowledgeBaseArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  chunkText String @db.Text
+  tokenCount Int?
+  embedding Unsupported("vector(1536)")
+  createdAt DateTime @default(now())
+  @@index([organizationId])
+}
+
+model Ticket {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  ticketNumber String
+  subject String
+  description String @db.Text
+  status TicketStatus @default(OPEN)
+  priority TicketPriority @default(MEDIUM)
+  customerId String?
+  customer Customer? @relation(fields: [customerId], references: [id])
+  assignedAgentId String?
+  assignedAgent User? @relation("AssignedTicket", fields: [assignedAgentId], references: [id])
+  createdById String
+  createdBy User @relation("CreatedTicket", fields: [createdById], references: [id])
+  contactId String?
+  contact Contact? @relation(fields: [contactId], references: [id])
+  intent IntentCategory?
+  dueAt DateTime?
+  resolvedAt DateTime?
+  closedAt DateTime?
+  tags String[]
+  comments TicketComment[]
+  attachments TicketAttachment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([organizationId, ticketNumber])
+}
+
+model TicketComment {
+  id String @id @default(cuid())
+  ticketId String
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  authorId String
+  author User @relation(fields: [authorId], references: [id])
+  content String @db.Text
+  isInternal Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TicketAttachment {
+  id String @id @default(cuid())
+  ticketId String
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  fileName String
+  fileUrl String
+  fileSizeBytes Int
+  mimeType String
+  createdAt DateTime @default(now())
+}
+
+model AgentSipCredentials {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id])
+  sipUsername String
+  sipPassword String
+  subAccount String
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CallRecord {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  contactId String?
+  contact Contact? @relation(fields: [contactId], references: [id])
+  agentId String?
+  agent User? @relation("AgentCall", fields: [agentId], references: [id])
+  customerId String?
+  customer Customer? @relation("CustomerCall", fields: [customerId], references: [id])
+  sipCallId String? @unique
+  direction String
+  from String
+  to String
+  startedAt DateTime?
+  endedAt DateTime?
+  billSeconds Int?
+  disposition String?
+  costCAD Float?
+  language Language?
+  aiHandled Boolean @default(true)
+  aiTurns Int @default(0)
+  recordingUrl String?
+  recordingStoredUrl String?
+  recordingSize Int?
+  transcription String? @db.Text
+  transcriptionLang String?
+  transcriptionAt DateTime?
+  transcriptionModel String?
+  transcriptionCost Float?
+  summary String? @db.Text
+  summaryAt DateTime?
+  summaryModel String?
+  transcriptionStatus TranscriptionStatus @default(PENDING)
+  transcriptionError String?
+  voicemailUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CallbackRequest {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customerId String?
+  customerName String
+  phoneNumber String
+  email String?
+  reason String?
+  preferredTime String?
+  language Language @default(EN)
+  requestedVia String @default("chat")
+  completedAt DateTime?
+  completedById String?
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  type String
+  title String
+  body String
+  data Json?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  organizationId String?
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+  action String
+  entity String
+  entityId String?
+  before Json?
+  after Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model Subscription {
+  id String @id @default(cuid())
+  organizationId String @unique
+  organization Organization @relation(fields: [organizationId], references: [id])
+  plan String @default("starter")
+  status String @default("active")
+  monthlyContacts Int @default(0)
+  agentSeats Int @default(3)
+  stripeCustomerId String?
+  stripeSubId String?
+  currentPeriodEnd DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

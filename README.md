@@ -1,106 +1,121 @@
-# AvivaVirtual Website
+# AvivaVirtual Platform v2
 
-**Live URL:** https://avivavirtual.com  
-**Stack:** Pure HTML/CSS/JS — no build tools needed  
-**Hosting:** GitHub Pages + Ionos custom domain
+AvivaVirtual is a Canadian B2B outsourced customer care company. The platform in this repository supports white-labelled customer support for enterprise clients: tenant-specific AI agents answer voice and chat first, retrieve approved client knowledge with RAG, and escalate to trained AvivaVirtual human agents when confidence, sentiment, policy, or customer request requires it.
 
----
+## Architecture
 
-## Files in This Repo
+```text
+Customer voice/chat/email
+  -> Client channel (DID, widget, inbox)
+  -> Tenant-isolated Contact
+  -> AI RAG pipeline (intent, embeddings, pgvector, grounded response)
+  -> Built-in or client webhook tools
+  -> Human AvivaVirtual agent escalation when needed
+  -> Tickets, transcripts, analytics, audit logs
+```
 
-| File | Purpose |
-|------|---------|
-| `index.html` | Main website (all-in-one) |
-| `404.html` | Custom 404 error page |
-| `CNAME` | Tells GitHub Pages to use avivavirtual.com |
+For a layperson-friendly architecture explanation with Mermaid diagrams for the system, code flow, chat flow, voice flow, and RAG flow, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+For final review commands and the npm-registry access note, see [`docs/FINAL_REVIEW.md`](docs/FINAL_REVIEW.md).
 
----
+## Monorepo structure
 
-## Deployment Steps
+```text
+apps/
+  web/      Next.js 14 dashboard and marketing site
+  api/      NestJS API, AI orchestration, auth, contacts, tickets, VoIP
+  widget/   Standalone Shadow DOM chat widget
+  mobile/   Expo mobile agent app workspace
+  macos/    Tauri desktop agent app workspace
+  whisper/  FastAPI faster-whisper service
+packages/
+  shared/   Shared TypeScript domain types
+  ui/       Shared React UI primitives
+  config/   Shared TypeScript configuration
+prisma/     Multi-tenant schema and seed data
+```
 
-### Step 1 — Create GitHub Account
-Go to https://github.com and sign up (free).
+## Quick start
 
-### Step 2 — Create a New Repository
-1. Click the **+** icon → **New repository**
-2. Name it exactly: `avivavirtual.github.io`
-3. Set to **Public**
-4. Do NOT initialize with README (upload files directly)
-5. Click **Create repository**
+```bash
+cp .env.example .env
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run seed
+docker compose up --build
+```
 
-### Step 3 — Upload Your Files
-1. In the new empty repo, click **uploading an existing file**
-2. Drag and drop all 3 files: `index.html`, `404.html`, `CNAME`
-3. Scroll down, click **Commit changes**
+## Seed credentials
 
-### Step 4 — Enable GitHub Pages
-1. Go to your repo → **Settings** tab
-2. Scroll to **Pages** in the left sidebar
-3. Under **Source** → Select **Deploy from a branch**
-4. Branch: **main** | Folder: **/ (root)**
-5. Click **Save**
-6. GitHub will show: *"Your site is ready to be published at https://avivavirtual.github.io"*
+| Role | Email | Password |
+| --- | --- | --- |
+| SUPER_ADMIN | `admin@avivavirtual.ca` | `SuperAdmin@123!` |
+| OPS_MANAGER | `ops@avivavirtual.ca` | `OpsManager@123!` |
+| AGENT | `agent1@avivavirtual.ca` | `Agent@123!` |
+| AGENT | `agent2@avivavirtual.ca` | `Agent@123!` |
+| AGENT | `agent3@avivavirtual.ca` | `Agent@123!` |
+| CLIENT_ADMIN (Rogers) | `admin@rogers-demo.ca` | `ClientAdmin@123!` |
+| CLIENT_ADMIN (Maple Leaf Realty) | `admin@mapleleaf-demo.ca` | `ClientAdmin@123!` |
 
-### Step 5 — Add Custom Domain in GitHub
-1. Still in **Settings → Pages**
-2. Under **Custom domain**, type: `avivavirtual.com`
-3. Click **Save**
-4. Check **Enforce HTTPS** (after DNS propagates — may take up to 24 hrs)
+## Tenant model
 
----
+Every client tenant owns isolated configuration and data:
 
-## Ionos DNS Configuration
+- Knowledge base articles, uploaded files, and pgvector embeddings.
+- AI persona name, prompts, greeting, TTS voice, and escalation threshold.
+- Inbound channels: VoIP.ms DID, widget embed key, and email inbox.
+- Human agent assignments and availability.
+- Tickets, contacts, messages, call records, callbacks, analytics, and audit logs.
+- Widget branding, allowed domains, and PIPEDA consent settings.
 
-Log in to https://www.ionos.com → **Domains & SSL** → Click **avivavirtual.com** → **DNS**
+## AI pipeline
 
-### A Records (point root domain to GitHub)
-Delete any existing A records for `@`, then add these 4:
+The NestJS `RagService` implements the production path:
 
-| Type | Host | Points To | TTL |
-|------|------|-----------|-----|
-| A | @ | 185.199.108.153 | 3600 |
-| A | @ | 185.199.109.153 | 3600 |
-| A | @ | 185.199.110.153 | 3600 |
-| A | @ | 185.199.111.153 | 3600 |
+1. Classify intent with JSON output.
+2. Embed the customer query with `text-embedding-3-small`.
+3. Retrieve approved tenant chunks with pgvector and `organizationId` filtering.
+4. Compute confidence from cosine similarity.
+5. Generate a grounded answer in English or French.
+6. Escalate and generate a concise handoff summary when confidence is below threshold.
 
-### CNAME Record (www subdomain)
+## VoIP.ms setup guide
 
-| Type | Host | Points To | TTL |
-|------|------|-----------|-----|
-| CNAME | www | avivavirtual.github.io | 3600 |
+1. Enable the VoIP.ms API and restrict allowed API IPs to backend infrastructure.
+2. Create one AI bridge SIP sub-account and store it in `VOIPMS_AI_SUBACCOUNT`.
+3. Create human agent sub-accounts for browser JsSIP registration.
+4. Use `toronto.voip.ms` and `webrtc.voip.ms` for Canadian data residency.
+5. Enable WebRTC and codecs PCMU, PCMA, and OPUS.
+6. Route each client DID either to AI bridge first or to hunt/ring-all fallback rules.
 
-> **Note:** Some Ionos plans only allow one A record. If that's the case, use just the first IP (185.199.108.153) or contact Ionos support to enable multiple A records.
+## Whisper microservice
 
-### After Adding DNS Records
-- DNS propagation takes **15 minutes to 24 hours**
-- Check status at: https://dnschecker.org/#A/avivavirtual.com
-- Once propagated, GitHub Pages will automatically issue your SSL certificate
-- Your site will be live at https://avivavirtual.com
+`apps/whisper` is designed for DigitalOcean Toronto (`tor1`) deployment. It uses FastAPI, faster-whisper, ffmpeg conversion to 16 kHz mono WAV, VAD filtering, Prometheus metrics, structured service boundaries, and `X-API-Key` shared-secret authentication.
 
----
+Run it independently:
 
-## Updating the Website
+```bash
+docker compose -f docker-compose.whisper.yml up --build
+```
 
-Whenever you want to update content:
-1. Edit `index.html` on your computer
-2. Go to your GitHub repo
-3. Click `index.html` → click the **pencil (edit)** icon
-4. Paste the updated code → **Commit changes**
-5. GitHub automatically redeploys in ~60 seconds
+Set `WHISPER_PROVIDER=self-hosted` and `WHISPER_SELF_HOSTED_URL=http://whisper:8000` to route transcription through this service.
 
----
+## PIPEDA compliance notes
 
-## Troubleshooting
+- Widget contact creation requires consent before the first message is processed.
+- Audio can remain in Canada when the self-hosted Whisper deployment is used.
+- Recording and transcript retention windows are configured through environment variables.
+- Tenant data must always be filtered by `organizationId`.
+- SIP passwords and webhook headers are stored encrypted at rest.
+- Login, ticket changes, KB publishing, recording deletion, and org configuration changes belong in audit logs.
 
-| Problem | Solution |
-|---------|---------|
-| Site shows "404" after deploy | Wait 5 min, check Settings → Pages is enabled |
-| Domain not working | Check DNS propagation at dnschecker.org |
-| HTTPS not working | Wait 24 hrs after DNS propagates, then check "Enforce HTTPS" in GitHub Pages settings |
-| www not redirecting | Make sure CNAME record points to `avivavirtual.github.io` (not `.com`) |
-| Ionos won't let multiple A records | Use only `185.199.108.153` or upgrade Ionos plan |
+## Production checklist
 
----
-
-## Support
-Email: hello@avivavirtual.com
+- [x] Monorepo layout for API, web, widget, shared packages, Prisma, Docker, CI.
+- [x] Complete multi-tenant Prisma schema with contacts, tickets, VoIP, AI, billing, and audit models.
+- [x] Seed data for AvivaVirtual staff, Rogers Communications, Maple Leaf Realty, KB articles, contacts, tickets, and calls.
+- [x] Initial NestJS API modules for auth, contacts, RAG, tickets, and VoIP.
+- [x] Initial Next.js dashboard and marketing entry points.
+- [x] Standalone embeddable widget with Shadow DOM and PIPEDA consent gate.
+- [x] Self-hosted Whisper FastAPI service.
+- [ ] Finish all CRUD controllers, guards, queues, WebSocket gateways, and automated tests before launch.

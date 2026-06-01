@@ -1,0 +1,17 @@
+{
+  "name": "@avivavirtual/widget",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.3.5"
+  }
+}
