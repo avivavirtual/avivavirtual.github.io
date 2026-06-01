@@ -127,4 +127,13 @@ class AvivaVirtualWidget extends HTMLElement {
 }
 
 customElements.define('avivavirtual-widget', AvivaVirtualWidget);
-document.body.appendChild(document.createElement('avivavirtual-widget'));
+
+function mountWidget() {
+  document.body.appendChild(document.createElement('avivavirtual-widget'));
+}
+
+if (document.body) {
+  mountWidget();
+} else {
+  document.addEventListener('DOMContentLoaded', mountWidget, { once: true });
+}

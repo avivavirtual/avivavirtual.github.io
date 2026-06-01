@@ -30,7 +30,10 @@ export class ContactsService {
     if (!input.pipedaConsent) throw new BadRequestException('PIPEDA consent is required before chat starts');
     const widget = await this.prisma.chatWidget.findUniqueOrThrow({ where: { embedKey } });
     this.assertAllowedDomain(widget.allowedDomains, headers);
-    const customer = await this.findOrCreateWidgetCustomer(widget.organizationId, input);
+    const normalized = { ...input, name: input.name?.trim(), email: input.email?.trim().toLowerCase() };
+    if (widget.requireName && !normalized.name) throw new BadRequestException('Name is required before chat starts');
+    if (widget.requireEmail && !normalized.email) throw new BadRequestException('Email is required before chat starts');
+    const customer = await this.findOrCreateWidgetCustomer(widget.organizationId, normalized);
     return this.prisma.contact.create({
       data: {
         organizationId: widget.organizationId,
@@ -51,6 +54,9 @@ export class ContactsService {
     });
     if (!contact.customer?.pipedaConsent) throw new BadRequestException('PIPEDA consent missing');
     const customerMessage = await this.prisma.message.create({ data: { contactId, senderType: 'CUSTOMER', content } });
+    if (contact.status !== ContactStatus.AI_ACTIVE) {
+      return { answer: 'A specialist has been notified and will continue the conversation.', status: contact.status };
+    }
     const ai = await this.rag.chat({
       organizationId: contact.organizationId,
       query: content,
@@ -58,6 +64,7 @@ export class ContactsService {
       contactHistory: [...contact.messages, customerMessage],
       customerId: contact.customerId ?? undefined,
       contactId,
+      aiTurns: contact.aiTurns,
     });
     await this.prisma.message.create({ data: { contactId, senderType: 'AI', content: ai.answer, aiConfidence: ai.confidence, retrievedChunks: ai.chunks } });
     await this.prisma.contact.update({
@@ -67,24 +74,25 @@ export class ContactsService {
         intent: this.toIntentCategory(ai.intent),
         intentConfidence: ai.intentConfidence,
         ...(ai.shouldEscalate
-          ? { status: ContactStatus.ESCALATED, escalated: true, escalationReason: 'LOW_CONFIDENCE' as const, escalatedAt: new Date(), aiSummary: ai.handoffSummary }
+          ? { status: ContactStatus.ESCALATED, escalated: true, escalationReason: (ai.escalationReason ?? 'LOW_CONFIDENCE') as const, escalatedAt: new Date(), aiSummary: ai.handoffSummary }
           : {}),
       },
     });
-    return ai;
+    return { answer: ai.answer };
   }
 
   private async findOrCreateWidgetCustomer(organizationId: string, input: { name?: string; email?: string; language?: Language }) {
     const email = input.email?.trim().toLowerCase();
+    const name = input.name?.trim();
     if (!email) {
       return this.prisma.customer.create({
-        data: { organizationId, firstName: input.name, language: input.language ?? 'EN', pipedaConsent: true, consentAt: new Date() },
+        data: { organizationId, firstName: name, language: input.language ?? 'EN', pipedaConsent: true, consentAt: new Date() },
       });
     }
     return this.prisma.customer.upsert({
       where: { organizationId_email: { organizationId, email } },
-      create: { organizationId, email, firstName: input.name, language: input.language ?? 'EN', pipedaConsent: true, consentAt: new Date() },
-      update: { firstName: input.name, language: input.language ?? 'EN', pipedaConsent: true, consentAt: new Date() },
+      create: { organizationId, email, firstName: name, language: input.language ?? 'EN', pipedaConsent: true, consentAt: new Date() },
+      update: { firstName: name, language: input.language ?? 'EN', pipedaConsent: true, consentAt: new Date() },
     });
   }
 

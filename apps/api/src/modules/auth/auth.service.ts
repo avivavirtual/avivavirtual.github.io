@@ -19,10 +19,10 @@ export type AuthenticatedUser = {
 export class AuthService {
   constructor(private readonly prisma: PrismaService, private readonly jwt: JwtService, private readonly config: ConfigService) {}
 
-  async register(input: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }) {
+  async register(input: { email: string; password: string; firstName: string; lastName: string }) {
     const passwordHash = await hash(input.password, 12);
     const user = await this.prisma.user.create({
-      data: { email: input.email.toLowerCase(), passwordHash, firstName: input.firstName, lastName: input.lastName, organizationId: input.organizationId },
+      data: { email: input.email.toLowerCase(), passwordHash, firstName: input.firstName, lastName: input.lastName, organizationId: null },
     });
     return this.sanitizeUser(user);
   }

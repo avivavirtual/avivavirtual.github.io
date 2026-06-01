@@ -1,4 +1,5 @@
-import { ArticleStatus, Channel, ContactStatus, PrismaClient, Role, TicketPriority, TicketStatus, TranscriptionStatus } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import { ArticleStatus, Channel, ContactStatus, KnowledgeBaseArticle, PrismaClient, Role, TicketPriority, TicketStatus, TranscriptionStatus } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -12,11 +13,29 @@ async function user(email: string, password: string, firstName: string, lastName
 }
 
 async function article(organizationId: string, title: string, content: string, category: string) {
-  return prisma.knowledgeBaseArticle.upsert({
+  const kbArticle = await prisma.knowledgeBaseArticle.upsert({
     where: { organizationId_title: { organizationId, title } },
     update: { content, status: ArticleStatus.APPROVED, tags: ['seed'], category, publishedAt: new Date() },
     create: { organizationId, title, content, status: ArticleStatus.APPROVED, tags: ['seed'], category, publishedAt: new Date() },
   });
+  await seedArticleEmbedding(kbArticle);
+  return kbArticle;
+}
+
+function deterministicEmbedding(text: string) {
+  const vector = Array.from({ length: 1536 }, (_, index) => {
+    const char = text.charCodeAt(index % text.length) || 1;
+    return (((char * (index + 17)) % 2000) / 1000 - 1).toFixed(6);
+  });
+  return `[${vector.join(',')}]`;
+}
+
+async function seedArticleEmbedding(kbArticle: KnowledgeBaseArticle) {
+  await prisma.embedding.deleteMany({ where: { articleId: kbArticle.id } });
+  await prisma.$executeRaw`
+    INSERT INTO "Embedding" (id, "organizationId", "articleId", "chunkIndex", "chunkText", "tokenCount", embedding, "createdAt")
+    VALUES (${randomUUID()}, ${kbArticle.organizationId}, ${kbArticle.id}, 0, ${kbArticle.content}, ${kbArticle.content.split(/\s+/).length}, ${deterministicEmbedding(kbArticle.content)}::vector, NOW())
+  `;
 }
 
 async function main() {

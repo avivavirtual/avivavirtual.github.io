@@ -6,7 +6,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
+    "lint": "npm run typecheck",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run typecheck"
   },

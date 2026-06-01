@@ -25,23 +25,26 @@ export class RagService {
     this.openai = new OpenAI({ apiKey: config.get<string>('OPENAI_API_KEY') ?? 'missing-key' });
   }
 
-  async chat(params: { organizationId: string; query: string; language: Language; contactHistory: ContactHistoryItem[]; customerId?: string; contactId?: string }): Promise<RagResponse> {
+  async chat(params: { organizationId: string; query: string; language: Language; contactHistory: ContactHistoryItem[]; customerId?: string; contactId?: string; aiTurns?: number }): Promise<RagResponse> {
     const [settings, persona] = await Promise.all([
       this.prisma.aISettings.findUnique({ where: { organizationId: params.organizationId } }),
       this.prisma.aIPersona.findUnique({ where: { organizationId: params.organizationId } }),
     ]);
     const threshold = settings?.confidenceThreshold ?? 0.75;
     const topK = settings?.retrievalTopK ?? 5;
+    const maxTurns = persona?.maxTurnsBeforeEscalate ?? 10;
+    const nextTurnReachesLimit = (params.aiTurns ?? 0) + 1 >= maxTurns;
     const classification = await this.classifyIntent(params.query, params.language, settings?.enableIntentClassify ?? true);
     const embedding = await this.embed(params.query);
     const chunks = await this.retrieveChunks(params.organizationId, embedding, topK);
     const confidence = chunks.length === 0 ? 0 : chunks.reduce((sum, chunk) => sum + chunk.score, 0) / chunks.length;
-    const shouldEscalate = confidence < threshold;
+    const shouldEscalate = nextTurnReachesLimit || confidence < threshold;
+    const escalationReason = nextTurnReachesLimit ? 'MAX_TURNS_REACHED' : 'LOW_CONFIDENCE';
     const answer = shouldEscalate
       ? this.escalationMessage(params.language, persona?.escalationMsgEN, persona?.escalationMsgFR)
       : await this.generateGroundedAnswer({ ...params, chunks, personaName: persona?.name ?? 'Ava', systemPrompt: params.language === 'FR' ? persona?.systemPromptFR : persona?.systemPromptEN });
     const handoffSummary = shouldEscalate ? await this.generateHandoffSummary(params.query, params.contactHistory, confidence) : undefined;
-    return { answer, confidence, chunks, shouldEscalate, escalationReason: shouldEscalate ? 'LOW_CONFIDENCE' : undefined, handoffSummary, intent: classification.intent, intentConfidence: classification.confidence };
+    return { answer, confidence, chunks, shouldEscalate, escalationReason: shouldEscalate ? escalationReason : undefined, handoffSummary, intent: classification.intent, intentConfidence: classification.confidence };
   }
 
   private async classifyIntent(query: string, language: Language, enabled: boolean): Promise<{ intent: string; confidence: number; language: Language }> {

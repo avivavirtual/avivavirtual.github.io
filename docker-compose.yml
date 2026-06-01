@@ -15,6 +15,9 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     env_file: .env
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://postgres:password@postgres:5432/avivavirtual}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
     depends_on: [postgres, redis]
     ports: ["3001:3001"]
   web:
