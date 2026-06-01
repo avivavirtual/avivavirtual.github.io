@@ -43,6 +43,12 @@ test('repository contains the runtime files required by the local development pa
   }
 });
 
+test('CI setup-node does not enable npm cache without a lockfile', () => {
+  const workflow = read('.github/workflows/ci.yml');
+  assert.equal(existsSync('package-lock.json'), false, 'this scaffold intentionally omits package-lock.json until registry access is available');
+  assert.equal(workflow.includes('cache: npm'), false, 'setup-node npm cache requires a lockfile and fails before npm install when none exists');
+});
+
 test('root package exposes reviewable test commands', () => {
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.scripts.test, 'node --test tests/**/*.test.mjs');
