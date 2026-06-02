@@ -26,7 +26,198 @@ seed.py      demo seed script
 ### System Context Diagram (C4 Level 1)
 
 This context view shows the external people and systems around the Avivavirtual platform. The platform boundary contains the SaaS application and the preserved public static site. The red-highlighted path is the core customer-to-AI support path through the widget and platform.
+flowchart TD
+  %% Avivavirtual Detailed Architecture
 
+  classDef user fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12
+  classDef frontend fill:#ecfeff,stroke:#0891b2,stroke-width:2px,color:#164e63
+  classDef backend fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d
+  classDef data fill:#fefce8,stroke:#ca8a04,stroke-width:2px,color:#713f12
+  classDef ai fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#3b0764
+  classDef external fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a
+  classDef critical fill:#fee2e2,stroke:#dc2626,stroke-width:4px,color:#7f1d1d
+  classDef async fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+
+  %% Users
+  subgraph USERS["👥 External Users"]
+    Visitor["🌐 Website Visitor"]
+    Customer["🙋 Customer"]
+    Agent["🎧 Support Agent"]
+    ClientAdmin["🏢 Client Admin"]
+    SuperAdmin["🛡️ Super Admin"]
+  end
+
+  %% Client Apps
+  subgraph CLIENTS["📱 Client Applications"]
+    StaticSite["🌍 Static GitHub Pages Site<br/>index.html / 404.html / CNAME"]
+    WebApp["💻 Next.js 14 Web App<br/>Dashboard + Public SaaS UI"]
+    Widget["💬 AI Chat Widget<br/>Embedded customer support"]
+    Mobile["📱 Expo Mobile App<br/>Customer + Agent screens"]
+    MacApp["🖥️ Tauri macOS App<br/>Agent desktop shell"]
+  end
+
+  %% Edge
+  subgraph EDGE["🌎 Public Access Layer"]
+    DNS["🌐 Domain / DNS<br/>avivavirtual.com"]
+    HTTPS["🔒 HTTPS / Browser"]
+  end
+
+  %% API
+  subgraph API["⚙️ FastAPI Backend"]
+    FastAPI["🚀 FastAPI ASGI App<br/>REST API /api/v1"]
+    SocketIO["🔴 Socket.IO Gateway<br/>Live chat + agent events"]
+    Auth["🔐 Auth Module<br/>JWT + Refresh Tokens"]
+    Tenant["🏢 Tenant Scope Middleware<br/>Org-level isolation"]
+    Security["🧱 Security Headers<br/>CORS / HSTS / Frame Protection"]
+    Routers["🧩 API Routers<br/>auth, users, orgs, conversations,<br/>tickets, AI, KB, analytics, files, VoIP"]
+  end
+
+  %% Services
+  subgraph SERVICES["🧠 Backend Services"]
+    AuthSvc["🔐 Auth Service"]
+    ConvSvc["💬 Conversation Service"]
+    TicketSvc["🎫 Ticket Service"]
+    AISvc["🤖 AI Service"]
+    KBSvc["📚 Knowledge Base Service"]
+    VoIPSvc["☎️ VoIP Service"]
+    AnalyticsSvc["📊 Analytics Service"]
+    AuditSvc["🧾 Audit Service"]
+    NotifySvc["📨 Notification Service"]
+  end
+
+  %% Async
+  subgraph ASYNC["⏱️ Async Processing"]
+    Redis["🧰 Redis<br/>Broker + cache"]
+    CeleryWorker["👷 Celery Worker<br/>transcription, summary, embeddings"]
+    CeleryBeat["⏰ Celery Beat<br/>scheduled jobs"]
+    Flower["🌸 Flower<br/>worker monitoring"]
+  end
+
+  %% Data
+  subgraph DATA["🗄️ Persistence Layer"]
+    Postgres["🐘 PostgreSQL + pgvector<br/>tenants, users, tickets, messages,<br/>embeddings, audit logs"]
+    Uploads["📁 Upload Volume<br/>attachments"]
+    Recordings["🎙️ Recording Volume<br/>call recordings"]
+    Alembic["🧬 Alembic Migrations<br/>schema versioning"]
+  end
+
+  %% AI/Voice
+  subgraph INTELLIGENCE["🤖 AI + Voice Processing"]
+    OpenAI["🧠 OpenAI API<br/>chat + embeddings"]
+    Whisper["🎧 Whisper Service<br/>faster-whisper transcription"]
+  end
+
+  %% External systems
+  subgraph EXTERNAL["🔌 External Providers"]
+    VoIPMS["☎️ VoIP.ms<br/>SIP / WebRTC / CDR"]
+    SMTP["📧 SMTP / Brevo<br/>emails + alerts"]
+    GitHubPages["📄 GitHub Pages<br/>static hosting"]
+  end
+
+  %% Shared packages
+  subgraph PACKAGES["📦 Shared Monorepo Packages"]
+    Shared["🧩 packages/shared<br/>TypeScript types"]
+    UI["🎨 packages/ui<br/>React components"]
+    Config["⚙️ packages/config<br/>shared config"]
+  end
+
+  %% User flows
+  Visitor --> DNS --> HTTPS --> StaticSite
+  Visitor --> Widget
+  Customer --> WebApp
+  Customer --> Mobile
+  Agent --> WebApp
+  Agent --> MacApp
+  ClientAdmin --> WebApp
+  SuperAdmin --> WebApp
+
+  %% Hosting
+  StaticSite --> GitHubPages
+  StaticSite --> WebApp
+
+  %% Frontend to backend
+  WebApp -->|"REST HTTPS"| FastAPI
+  WebApp -->|"Socket.IO realtime"| SocketIO
+  Widget ==>|"Public widget API"| FastAPI
+  Mobile -->|"REST HTTPS"| FastAPI
+  MacApp -->|"REST HTTPS"| FastAPI
+
+  %% WebRTC
+  WebApp -->|"WSS SIP calling"| VoIPMS
+  MacApp -->|"WSS SIP calling"| VoIPMS
+
+  %% API internals
+  FastAPI --> Security
+  FastAPI --> Auth
+  FastAPI --> Tenant
+  FastAPI --> Routers
+  FastAPI --> SocketIO
+
+  Routers --> AuthSvc
+  Routers --> ConvSvc
+  Routers --> TicketSvc
+  Routers --> AISvc
+  Routers --> KBSvc
+  Routers --> VoIPSvc
+  Routers --> AnalyticsSvc
+  Routers --> AuditSvc
+  Routers --> NotifySvc
+
+  %% Service dependencies
+  AuthSvc --> Postgres
+  ConvSvc --> Postgres
+  TicketSvc --> Postgres
+  KBSvc --> Postgres
+  AISvc --> OpenAI
+  AISvc --> KBSvc
+  VoIPSvc --> VoIPMS
+  AnalyticsSvc --> Postgres
+  AuditSvc --> Postgres
+  NotifySvc --> SMTP
+
+  %% Async jobs
+  FastAPI -->|"enqueue jobs"| Redis
+  Redis --> CeleryWorker
+  CeleryBeat --> Redis
+  Flower --> Redis
+
+  CeleryWorker --> Postgres
+  CeleryWorker --> Uploads
+  CeleryWorker --> Recordings
+  CeleryWorker --> Whisper
+  CeleryWorker --> OpenAI
+
+  %% Storage
+  FastAPI --> Uploads
+  FastAPI --> Recordings
+  FastAPI --> Postgres
+  Alembic --> Postgres
+
+  %% Shared packages
+  WebApp --> Shared
+  WebApp --> UI
+  WebApp --> Config
+  Mobile --> Shared
+  MacApp --> Shared
+
+  %% Highlight critical path
+  Widget ==>|"1. customer asks question"| FastAPI
+  FastAPI ==>|"2. route to conversation service"| ConvSvc
+  ConvSvc ==>|"3. retrieve KB context"| KBSvc
+  KBSvc ==>|"4. vector search"| Postgres
+  ConvSvc ==>|"5. generate AI answer"| AISvc
+  AISvc ==>|"6. LLM response"| OpenAI
+  ConvSvc ==>|"7. realtime update"| SocketIO
+  SocketIO ==>|"8. response to visitor/agent"| Widget
+
+  class Visitor,Customer,Agent,ClientAdmin,SuperAdmin user
+  class StaticSite,WebApp,Widget,Mobile,MacApp frontend
+  class FastAPI,SocketIO,Auth,Tenant,Security,Routers,AuthSvc,ConvSvc,TicketSvc,AISvc,KBSvc,VoIPSvc,AnalyticsSvc,AuditSvc,NotifySvc backend
+  class Redis,CeleryWorker,CeleryBeat,Flower async
+  class Postgres,Uploads,Recordings,Alembic data
+  class OpenAI,Whisper ai
+  class VoIPMS,SMTP,GitHubPages,DNS,HTTPS external
+  class Widget,FastAPI,ConvSvc,KBSvc,AISvc,Postgres,OpenAI,SocketIO critical
 ```mermaid
 flowchart TD
   classDef critical fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d
