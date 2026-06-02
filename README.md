@@ -1,106 +1,498 @@
-# AvivaVirtual Website
+# Avivavirtual Platform
 
-**Live URL:** https://avivavirtual.com  
-**Stack:** Pure HTML/CSS/JS — no build tools needed  
-**Hosting:** GitHub Pages + Ionos custom domain
+Avivavirtual is an AI-powered customer care platform for Canadian businesses. It combines public web pages, a protected operations dashboard, FastAPI backend services, VoIP.ms browser calling, post-call Whisper transcription, Expo mobile screens, and a Tauri macOS agent app.
 
----
+The repository name remains `avivavirtual.github.io`, and the original static GitHub Pages files are still present at the root (`index.html`, `404.html`, `CNAME`, SEO and verification files). The SaaS platform source lives in `apps/`, `packages/`, `alembic/`, and root orchestration files.
 
-## Files in This Repo
+## Monorepo
 
-| File | Purpose |
-|------|---------|
-| `index.html` | Main website (all-in-one) |
-| `404.html` | Custom 404 error page |
-| `CNAME` | Tells GitHub Pages to use avivavirtual.com |
+```text
+apps/
+  api/       FastAPI, SQLModel, Celery, Socket.IO
+  web/       Next.js 14 App Router dashboard and public site
+  mobile/    Expo customer and agent screens
+  macos/     Tauri 2 + React agent desktop shell
+  whisper/   self-hosted faster-whisper service
+packages/
+  shared/    shared TypeScript types and utilities
+  ui/        small shared React components
+  config/    shared config values
+alembic/     root Alembic migrations
+seed.py      demo seed script
+```
 
----
+## Architecture Diagrams
 
-## Deployment Steps
+### System Context Diagram (C4 Level 1)
 
-### Step 1 — Create GitHub Account
-Go to https://github.com and sign up (free).
+This context view shows the external people and systems around the Avivavirtual platform. The platform boundary contains the SaaS application and the preserved public static site. The red-highlighted path is the core customer-to-AI support path through the widget and platform.
 
-### Step 2 — Create a New Repository
-1. Click the **+** icon → **New repository**
-2. Name it exactly: `avivavirtual.github.io`
-3. Set to **Public**
-4. Do NOT initialize with README (upload files directly)
-5. Click **Create repository**
+```mermaid
+flowchart TD
+  classDef critical fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d
+  classDef boundary fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+  classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a
 
-### Step 3 — Upload Your Files
-1. In the new empty repo, click **uploading an existing file**
-2. Drag and drop all 3 files: `index.html`, `404.html`, `CNAME`
-3. Scroll down, click **Commit changes**
+  subgraph Actors["External Actors"]
+    Visitor["fa:fa-user Web Visitor"]
+    Customer["fa:fa-user Customer"]
+    Agent["fa:fa-headset Agent"]
+    ClientAdmin["fa:fa-user-gear Client Admin"]
+    SuperAdmin["fa:fa-shield Super Admin"]
+  end
 
-### Step 4 — Enable GitHub Pages
-1. Go to your repo → **Settings** tab
-2. Scroll to **Pages** in the left sidebar
-3. Under **Source** → Select **Deploy from a branch**
-4. Branch: **main** | Folder: **/ (root)**
-5. Click **Save**
-6. GitHub will show: *"Your site is ready to be published at https://avivavirtual.github.io"*
+  subgraph Boundary["Avivavirtual Boundary"]
+    Platform["Avivavirtual Platform"]
+    StaticSite["Static Site"]
+  end
 
-### Step 5 — Add Custom Domain in GitHub
-1. Still in **Settings → Pages**
-2. Under **Custom domain**, type: `avivavirtual.com`
-3. Click **Save**
-4. Check **Enforce HTTPS** (after DNS propagates — may take up to 24 hrs)
+  subgraph External["External Systems"]
+    VoIP["VoIP.ms"]
+    OpenAI["OpenAI"]
+    SMTP["SMTP Email"]
+    GitHubPages["GitHub Pages"]
+  end
 
----
+  Visitor ==>|AI support| Platform
+  Customer -->|web/mobile| Platform
+  Agent -->|dashboard| Platform
+  ClientAdmin -->|admin ops| Platform
+  SuperAdmin -->|tenant ops| Platform
+  Visitor -->|browse HTTPS| StaticSite
+  StaticSite -->|hosted by| GitHubPages
+  Platform -->|SIP/CDR API| VoIP
+  Platform -->|AI API| OpenAI
+  Platform -->|notifications| SMTP
 
-## Ionos DNS Configuration
+  class Visitor,Platform,OpenAI critical
+  class Platform,StaticSite boundary
+  class VoIP,OpenAI,SMTP,GitHubPages external
+```
 
-Log in to https://www.ionos.com → **Domains & SSL** → Click **avivavirtual.com** → **DNS**
+### Container Diagram (C4 Level 2)
 
-### A Records (point root domain to GitHub)
-Delete any existing A records for `@`, then add these 4:
+This container view breaks the monorepo into deployable apps, shared packages, backend services, data stores, and external integrations. Client apps talk to the FastAPI backend over REST and Socket.IO, while browser calling uses VoIP.ms WebRTC/SIP. Celery workers process async jobs through Redis and persist results in PostgreSQL.
 
-| Type | Host | Points To | TTL |
-|------|------|-----------|-----|
-| A | @ | 185.199.108.153 | 3600 |
-| A | @ | 185.199.109.153 | 3600 |
-| A | @ | 185.199.110.153 | 3600 |
-| A | @ | 185.199.111.153 | 3600 |
+```mermaid
+flowchart TD
+  classDef critical fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d
+  classDef app fill:#ecfeff,stroke:#0891b2,color:#164e63
+  classDef backend fill:#f0fdf4,stroke:#16a34a,color:#14532d
+  classDef data fill:#fefce8,stroke:#ca8a04,color:#713f12
+  classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a
 
-### CNAME Record (www subdomain)
+  subgraph Clients["Client Apps"]
+    Web["Web App\nNext.js"]
+    Widget["AV Agent\nWidget JS"]
+    Mobile["Mobile App\nExpo"]
+    Mac["Mac App\nTauri"]
+    StaticSite["Static Site\nHTML"]
+  end
 
-| Type | Host | Points To | TTL |
-|------|------|-----------|-----|
-| CNAME | www | avivavirtual.github.io | 3600 |
+  subgraph Packages["Workspace Packages"]
+    Shared["Shared Types"]
+    UI["UI Package"]
+    Config["Config Package"]
+  end
 
-> **Note:** Some Ionos plans only allow one A record. If that's the case, use just the first IP (185.199.108.153) or contact Ionos support to enable multiple A records.
+  subgraph Backend["Backend Domain"]
+    API["API Server\nFastAPI"]
+    SocketIO["Socket.IO\nASGI"]
+    Worker["Worker\nCelery"]
+    Beat["Beat\nCelery"]
+    Flower["Flower\nMonitor"]
+    Whisper["Whisper API\nFastAPI"]
+  end
 
-### After Adding DNS Records
-- DNS propagation takes **15 minutes to 24 hours**
-- Check status at: https://dnschecker.org/#A/avivavirtual.com
-- Once propagated, GitHub Pages will automatically issue your SSL certificate
-- Your site will be live at https://avivavirtual.com
+  subgraph Data["Data Stores"]
+    Postgres["Postgres\npgvector"]
+    Redis["Redis\nBroker"]
+    Files["File Volumes"]
+  end
 
----
+  subgraph External["External Systems"]
+    VoIP["VoIP.ms"]
+    OpenAI["OpenAI"]
+    SMTP["SMTP Email"]
+  end
 
-## Updating the Website
+  Web -->|REST HTTPS| API
+  Web -->|Socket.IO| SocketIO
+  Widget ==>|REST HTTPS| API
+  Mobile -->|REST HTTPS| API
+  Mac -->|REST HTTPS| API
+  Web -->|WSS SIP| VoIP
+  Mac -->|WSS SIP| VoIP
+  API -->|ASGI events| SocketIO
+  API ==>|SQL asyncpg| Postgres
+  API -->|enqueue Redis| Redis
+  API -->|store files| Files
+  API -->|VoIP API| VoIP
+  API -->|AI API| OpenAI
+  API -->|SMTP| SMTP
+  Worker -->|dequeue Redis| Redis
+  Worker -->|SQL asyncpg| Postgres
+  Worker -->|read/write| Files
+  Worker -->|transcribe HTTP| Whisper
+  Worker -->|summarize API| OpenAI
+  Beat -->|schedule jobs| Redis
+  Flower -->|monitor Redis| Redis
+  Whisper -->|model cache| Files
+  Web -->|imports| Shared
+  Web -->|imports| UI
+  Web -->|imports| Config
+  Mobile -->|imports| Shared
+  Mac -->|imports| Shared
+  StaticSite -->|links to| Web
 
-Whenever you want to update content:
-1. Edit `index.html` on your computer
-2. Go to your GitHub repo
-3. Click `index.html` → click the **pencil (edit)** icon
-4. Paste the updated code → **Commit changes**
-5. GitHub automatically redeploys in ~60 seconds
+  class Widget,API,Postgres,OpenAI critical
+  class Web,Widget,Mobile,Mac,StaticSite app
+  class API,SocketIO,Worker,Beat,Flower,Whisper backend
+  class Postgres,Redis,Files data
+  class VoIP,OpenAI,SMTP external
+```
 
----
+### Component Diagram (C4 Level 3)
 
-## Troubleshooting
+This component view drills into the FastAPI backend, which is the most critical container. Routers expose HTTP APIs, services enforce business logic and tenant scope, models/schemas define persistence contracts, and Celery tasks run async workloads. The red path highlights the widget AI-answer path from conversation routing to knowledge-base retrieval and response generation.
 
-| Problem | Solution |
-|---------|---------|
-| Site shows "404" after deploy | Wait 5 min, check Settings → Pages is enabled |
-| Domain not working | Check DNS propagation at dnschecker.org |
-| HTTPS not working | Wait 24 hrs after DNS propagates, then check "Enforce HTTPS" in GitHub Pages settings |
-| www not redirecting | Make sure CNAME record points to `avivavirtual.github.io` (not `.com`) |
-| Ionos won't let multiple A records | Use only `185.199.108.153` or upgrade Ionos plan |
+```mermaid
+flowchart TD
+  classDef critical fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d
+  classDef component fill:#f0f9ff,stroke:#0284c7,color:#0c4a6e
+  classDef infra fill:#f8fafc,stroke:#64748b,color:#0f172a
 
----
+  subgraph Entry["Entry Layer"]
+    Main["Main App"]
+    AuthMW["Auth MW"]
+    TenantMW["Tenant MW"]
+    SocketGW["Socket GW"]
+  end
 
-## Support
-Email: hello@avivavirtual.com
+  subgraph Auth["Auth Domain"]
+    AuthRouter["Auth Router"]
+    UserRouter["User Router"]
+    OrgRouter["Org Router"]
+    AuthSvc["Auth Svc"]
+    UserSvc["User Svc"]
+    OrgSvc["Org Svc"]
+  end
+
+  subgraph Support["Support Domain"]
+    ConvRouter["Conv Router"]
+    MsgRouter["Msg Router"]
+    TicketRouter["Ticket Router"]
+    ConvSvc["Conv Svc"]
+    TicketSvc["Ticket Svc"]
+    NotifySvc["Notify Svc"]
+  end
+
+  subgraph AI["AI Domain"]
+    AIRouter["AI Router"]
+    KBRouter["KB Router"]
+    AISvc["AI Svc"]
+    KBSvc["KB Svc"]
+  end
+
+  subgraph Ops["Ops Domain"]
+    VoIPRouter["VoIP Router"]
+    AnalyticsRouter["Analytics Router"]
+    AuditRouter["Audit Router"]
+    VoIPSvc["VoIP Svc"]
+    AuditSvc["Audit Svc"]
+    AnalyticsSvc["Analytics Svc"]
+  end
+
+  subgraph Async["Async Jobs"]
+    CeleryApp["Celery App"]
+    CDRTask["CDR Task"]
+    SLATask["SLA Task"]
+    EmbedTask["Embed Task"]
+    TranscribeTask["Transcribe Task"]
+    SummaryTask["Summary Task"]
+    RetainTask["Retain Task"]
+  end
+
+  subgraph Persistence["Persistence"]
+    Models["SQL Models"]
+    Schemas["Schemas"]
+    DB["Postgres"]
+    Queue["Redis"]
+  end
+
+  Main -->|mounts| AuthRouter
+  Main -->|mounts| ConvRouter
+  Main -->|mounts| TicketRouter
+  Main -->|mounts| AIRouter
+  Main -->|mounts| KBRouter
+  Main -->|mounts| VoIPRouter
+  Main -->|mounts| AnalyticsRouter
+  Main -->|mounts| AuditRouter
+  Main -->|wraps| AuthMW
+  Main -->|wraps| TenantMW
+  Main -->|serves| SocketGW
+  AuthRouter -->|calls| AuthSvc
+  UserRouter -->|calls| UserSvc
+  OrgRouter -->|calls| OrgSvc
+  ConvRouter ==>|calls| ConvSvc
+  MsgRouter -->|calls| ConvSvc
+  TicketRouter -->|calls| TicketSvc
+  AIRouter -->|calls| AISvc
+  KBRouter ==>|calls| KBSvc
+  ConvSvc ==>|answers via| AISvc
+  AISvc ==>|reads source| KBSvc
+  ConvSvc -->|notifies| NotifySvc
+  ConvSvc -->|emits| SocketGW
+  VoIPRouter -->|calls| VoIPSvc
+  AnalyticsRouter -->|calls| AnalyticsSvc
+  AuditRouter -->|calls| AuditSvc
+  AuthSvc -->|uses| Models
+  ConvSvc -->|uses| Models
+  TicketSvc -->|uses| Models
+  AISvc -->|uses| Models
+  KBSvc -->|uses| Models
+  Models ==>|SQL| DB
+  Schemas -->|validate| AuthRouter
+  Schemas -->|validate| ConvRouter
+  CeleryApp -->|uses| Queue
+  CeleryApp -->|runs| CDRTask
+  CeleryApp -->|runs| SLATask
+  CeleryApp -->|runs| EmbedTask
+  CeleryApp -->|runs| TranscribeTask
+  CeleryApp -->|runs| SummaryTask
+  CeleryApp -->|runs| RetainTask
+  CDRTask -->|persists| DB
+  SLATask -->|persists| DB
+  EmbedTask -->|updates| DB
+  TranscribeTask -->|updates| DB
+  SummaryTask -->|updates| DB
+  RetainTask -->|purges| DB
+
+  class ConvRouter,ConvSvc,AISvc,KBSvc,DB critical
+  class Main,AuthRouter,UserRouter,OrgRouter,ConvRouter,MsgRouter,TicketRouter,AIRouter,KBRouter,VoIPRouter,AnalyticsRouter,AuditRouter component
+  class AuthSvc,UserSvc,OrgSvc,ConvSvc,TicketSvc,NotifySvc,AISvc,KBSvc,VoIPSvc,AuditSvc,AnalyticsSvc component
+  class Models,Schemas,DB,Queue,CeleryApp,SocketGW,AuthMW,TenantMW infra
+```
+
+### Data Flow Diagram
+
+This data-flow view traces the main demo and production journeys: demo registration/login, widget-to-AI answer generation, low-confidence review routing, and call transcription. The critical path is the widget AI answer flow, from visitor message through the backend, knowledge base, AI service, and back to the widget.
+
+```mermaid
+flowchart TD
+  classDef critical fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d
+  classDef auth fill:#eef2ff,stroke:#4f46e5,color:#312e81
+  classDef ai fill:#ecfeff,stroke:#0891b2,color:#164e63
+  classDef async fill:#f0fdf4,stroke:#16a34a,color:#14532d
+
+  subgraph DemoAuth["Demo Auth"]
+    Trial["Start Trial"]
+    Register["Register"]
+    LocalStore["Local Store"]
+    Login["Login"]
+    Dashboard["Dashboard"]
+  end
+
+  subgraph WidgetFlow["Widget AI Flow"]
+    Visitor["Visitor"]
+    Agent["AV Agent"]
+    ConvAPI["Conv API"]
+    ConvSvc["Conv Svc"]
+    AISvc["AI Svc"]
+    KBSvc["KB Svc"]
+    DB["Postgres"]
+    Reply["AI Reply"]
+  end
+
+  subgraph ReviewFlow["Review Flow"]
+    LowConf["Low Score"]
+    Review["Review Queue"]
+    Ticket["Ticket"]
+    Notify["Notify Staff"]
+  end
+
+  subgraph CallFlow["Call Flow"]
+    VoIP["VoIP.ms"]
+    CDR["CDR Sync"]
+    Worker["Worker"]
+    Whisper["Whisper"]
+    Summary["Summary"]
+    Socket["Socket.IO"]
+  end
+
+  Trial -->|click| Register
+  Register -->|save user| LocalStore
+  LocalStore -->|session| Dashboard
+  Login -->|verify user| LocalStore
+  LocalStore -->|allow access| Dashboard
+
+  Visitor ==>|ask question| Agent
+  Agent ==>|REST POST| ConvAPI
+  ConvAPI ==>|calls| ConvSvc
+  ConvSvc ==>|request answer| AISvc
+  AISvc ==>|retrieve source| KBSvc
+  KBSvc ==>|SQL query| DB
+  DB ==>|source docs| KBSvc
+  KBSvc ==>|approved source| AISvc
+  AISvc ==>|answer + score| ConvSvc
+  ConvSvc ==>|persist messages| DB
+  ConvSvc ==>|HTTP response| Agent
+  Agent ==>|render answer| Reply
+
+  AISvc -->|low confidence| LowConf
+  LowConf -->|queue review| Review
+  Review -->|create follow-up| Ticket
+  Review -->|emit alert| Notify
+
+  VoIP -->|CDR pull| CDR
+  CDR -->|enqueue job| Worker
+  Worker -->|transcribe HTTP| Whisper
+  Worker -->|summarize API| Summary
+  Summary -->|store result| DB
+  Summary -->|push event| Socket
+  Socket -->|notify UI| Dashboard
+
+  class Visitor,Agent,ConvAPI,ConvSvc,AISvc,KBSvc,DB,Reply critical
+  class Trial,Register,LocalStore,Login,Dashboard auth
+  class Visitor,Agent,ConvAPI,ConvSvc,AISvc,KBSvc,DB,Reply,LowConf,Review,Ticket,Notify ai
+  class VoIP,CDR,Worker,Whisper,Summary,Socket async
+```
+
+## Architecture Summary
+
+- Core patterns: monorepo with multiple client apps, API-centered service layer, repository-style SQLModel persistence, event-driven async jobs through Celery/Redis, and widget-first AI support.
+- Scalability: Next.js web, FastAPI API, Celery workers, Redis, PostgreSQL, and Whisper can scale independently. Worker queues can be split by transcription, summarization, embeddings, and SLA workloads.
+- Potential SPOFs: single PostgreSQL instance, single Redis broker, single API instance, local file volumes for recordings/uploads, and external dependency availability for VoIP.ms/OpenAI/SMTP.
+- Suggested improvements: add managed Postgres replicas/backups, Redis HA, object storage for recordings, API autoscaling, queue-specific workers, health checks with alerting, and production auth backed by server-side sessions or JWT refresh rotation.
+
+## Quick Start
+
+1. Copy environment values:
+
+```bash
+cp .env.example .env
+```
+
+2. Start infrastructure and services:
+
+```bash
+docker compose up --build
+```
+
+3. Apply migrations and seed demo data:
+
+```bash
+cd apps/api
+alembic upgrade head
+cd ../..
+python seed.py
+```
+
+Demo accounts:
+
+| Role | Email | Password |
+|---|---|---|
+| Super admin | `admin@avivavirtual.ca` | `SuperAdmin@123!` |
+| Client admin | `manager@demobusiness.ca` | `ClientAdmin@123!` |
+| Agent | `agent1@demobusiness.ca` | `Agent@123!` |
+| Agent | `agent2@demobusiness.ca` | `Agent@123!` |
+
+## Local Development
+
+API:
+
+```bash
+cd apps/api
+pip install -r requirements.txt
+uvicorn main:socket_app --reload --host 0.0.0.0 --port 3001
+```
+
+Web:
+
+```bash
+npm install --workspaces --include-workspace-root
+npm run dev --workspace=apps/web
+```
+
+Mobile:
+
+```bash
+npm run dev --workspace=apps/mobile
+```
+
+macOS shell:
+
+```bash
+npm run dev --workspace=apps/macos
+```
+
+Whisper:
+
+```bash
+cd apps/whisper
+cp .env.example .env
+docker compose up --build
+```
+
+## Backend
+
+The backend uses FastAPI 0.109, SQLModel, PostgreSQL 15 with pgvector, Redis, Celery, python-socketio, JWT auth, VoIP.ms wrappers, OpenAI/Whisper integration, and PIPEDA-focused retention jobs.
+
+Core routes are mounted under `/api/v1`:
+
+- `/auth`, `/users`, `/organizations`
+- `/conversations`, `/messages`, `/tickets`
+- `/knowledge-base`, `/ai`, `/analytics`
+- `/audit-logs`, `/notifications`, `/files`
+- `/voip`, `/billing`
+
+Tenant isolation is enforced in protected services by filtering organization-scoped queries with `organization_id`.
+
+## VoIP.ms Configuration
+
+1. Log in to VoIP.ms, open API Settings, and enable API access.
+2. Restrict allowed IPs to the production server IP. For local development, use a temporary broad rule only while testing.
+3. Manage your DID and route it to a main sub-account, ring group, or hunt group.
+4. Confirm WebRTC is enabled for the account.
+5. Enable PCMU, PCMA, and OPUS codecs.
+6. Use `toronto.voip.ms` as the recommended SIP server for Ontario users.
+7. Browser SIP clients connect with `wss://webrtc.voip.ms:8443`.
+
+Agent sub-accounts are created by the API when an admin creates a user with role `AGENT`. SIP passwords are encrypted at rest with AES-GCM using `ENCRYPTION_KEY`.
+
+PIPEDA note: VoIP.ms is a Canadian provider based in Montreal, QC. For clients with Canadian data residency requirements, pair VoIP.ms with the self-hosted Whisper service deployed in a Canadian region such as DigitalOcean Toronto (`tor1`).
+
+Limitations:
+
+- CDRs are synced by Celery beat every 60 minutes.
+- IVR/ring-group routing is configured in the VoIP.ms dashboard.
+- Transcription is post-call, not real-time.
+- Agents must grant microphone permission before browser SIP registration.
+
+## Whisper Pipeline
+
+Call flow:
+
+```text
+VoIP.ms CDR sync -> download MP3 -> Whisper transcription -> GPT summary -> WebSocket notification
+```
+
+Set `WHISPER_PROVIDER=openai` for OpenAI Whisper API or `WHISPER_PROVIDER=self-hosted` for `apps/whisper`.
+
+Default retention:
+
+- Recordings: 90 days
+- Transcripts and summaries: 365 days
+
+## Static Website
+
+The original GitHub Pages files remain at the repository root:
+
+- `index.html`
+- `404.html`
+- `CNAME`
+- `robots.txt`
+- `sitemap.xml`
+- `SEO_GUIDE.md`
+
+These are preserved for the existing `avivavirtual.com` deployment while the platform app can be deployed separately, for example at `app.avivavirtual.ca`.
