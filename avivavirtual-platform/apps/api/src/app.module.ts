@@ -12,7 +12,17 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, AuthModule, ChatModule, UsersModule, OrganizationsModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['../../.env.local', '../../.env', '.env.local', '.env']
+    }),
+    PrismaModule,
+    AuthModule,
+    ChatModule,
+    UsersModule,
+    OrganizationsModule
+  ],
   controllers: [AppController],
   providers: [AppService]
 })

@@ -81,7 +81,14 @@ export default function HomePage() {
       setMessages(conversation.messages);
       setStatus('Saved');
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Unable to send message');
+      const message =
+        error instanceof TypeError && error.message === 'Failed to fetch'
+          ? `Cannot reach API at ${apiUrl}`
+          : error instanceof Error
+            ? error.message
+            : 'Unable to send message';
+
+      setStatus(message);
     } finally {
       setIsSending(false);
     }

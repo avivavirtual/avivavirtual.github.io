@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev": "nest start --watch",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:docker": "sh -c \"pnpm prisma:generate && pnpm prisma:push && pnpm prisma:seed && node dist/main.js\"",
