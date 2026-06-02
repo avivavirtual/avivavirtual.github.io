@@ -1,0 +1,10 @@
+{
+  "name": "@avivavirtual/config",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tailwind": "./tailwind.ts",
+    "./tsconfig": "./tsconfig.json"
+  }
+}

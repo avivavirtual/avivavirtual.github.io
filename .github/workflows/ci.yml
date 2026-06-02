@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_DB: avivavirtual_test
+          POSTGRES_USER: aviva_user
+          POSTGRES_PASSWORD: aviva_password
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 10s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('apps/api/requirements.txt') }}
+      - run: pip install -r apps/api/requirements.txt
+      - run: alembic upgrade head
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://aviva_user:aviva_password@localhost:5432/avivavirtual_test
+          JWT_SECRET: ci-test-jwt-secret-key-32-chars
+          JWT_REFRESH_SECRET: ci-test-refresh-secret-32-chars
+          ENCRYPTION_KEY: ci-test-encryption-key-32-chars
+          OPENAI_API_KEY: sk-test-not-real
+      - run: pytest tests/ -v --asyncio-mode=auto
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://aviva_user:aviva_password@localhost:5432/avivavirtual_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci-test-jwt-secret-key-32-chars
+          JWT_REFRESH_SECRET: ci-test-refresh-secret-32-chars
+          ENCRYPTION_KEY: ci-test-encryption-key-32-chars
+          OPENAI_API_KEY: sk-test-not-real
+
+  test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+      - run: npm install --workspaces --include-workspace-root
+      - run: npm run typecheck --workspace=apps/web
+      - run: npm run build --workspace=apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_SOCKET_URL: http://localhost:3001
+
+  test-whisper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r apps/whisper/requirements.txt
+      - run: python -m compileall apps/whisper

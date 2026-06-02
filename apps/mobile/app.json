@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Avivavirtual",
+    "slug": "avivavirtual",
+    "scheme": "avivavirtual",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-notifications"],
+    "extra": {
+      "apiUrl": "http://localhost:3001"
+    }
+  }
+}

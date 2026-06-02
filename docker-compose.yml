@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: avivavirtual_db
+      POSTGRES_USER: aviva_user
+      POSTGRES_PASSWORD: aviva_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aviva_user -d avivavirtual_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  api:
+    build: apps/api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./recordings:/app/recordings
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aviva_user:aviva_password@postgres:5432/avivavirtual_db
+      REDIS_URL: redis://redis:6379
+
+  celery_worker:
+    build: apps/api
+    command: celery -A celery_app worker --loglevel=info -Q transcription,summarization,embeddings,default --concurrency=4
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+      - ./recordings:/app/recordings
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aviva_user:aviva_password@postgres:5432/avivavirtual_db
+      REDIS_URL: redis://redis:6379
+
+  celery_beat:
+    build: apps/api
+    command: celery -A celery_app beat --loglevel=info
+    restart: unless-stopped
+    depends_on:
+      - redis
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+
+  celery_flower:
+    build: apps/api
+    command: celery -A celery_app flower --port=5555
+    restart: unless-stopped
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    env_file: .env
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:3001
+      NEXT_PUBLIC_SOCKET_URL: http://api:3001
+
+  whisper:
+    build: apps/whisper
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - whisper_models:/app/models
+    env_file: .env
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  pgadmin:
+    image: dpage/pgadmin4
+    profiles: ["dev"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@avivavirtual.ca
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+
+volumes:
+  postgres_data:
+  whisper_models:

@@ -1,0 +1,23 @@
+{
+  "name": "avivavirtual-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/mobile",
+    "apps/macos",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.12",
+    "turbo": "^2.0.9",
+    "typescript": "^5.5.4"
+  }
+}

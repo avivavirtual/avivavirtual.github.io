@@ -1,0 +1,170 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: #f8fafc;
+  color: #1f2937;
+}
+
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  min-height: 100vh;
+}
+
+aside {
+  border-right: 1px solid #dbe3ea;
+  background: white;
+  padding: 16px;
+}
+
+aside h1 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+aside button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 10px;
+  color: #475569;
+  cursor: pointer;
+}
+
+aside button.active {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+main {
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.top-actions,
+.workspace {
+  display: flex;
+  gap: 12px;
+}
+
+.workspace {
+  align-items: stretch;
+}
+
+.workspace > .chat {
+  flex: 1;
+}
+
+.panel {
+  border: 1px solid #dbe3ea;
+  border-radius: 8px;
+  background: white;
+  padding: 16px;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 0;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row span,
+.panel p {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.badge {
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.bubble {
+  max-width: 72%;
+  border-radius: 8px;
+  background: #f1f5f9;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.bubble.agent {
+  margin-left: auto;
+  background: #0ea5e9;
+  color: white;
+}
+
+.chat {
+  display: grid;
+  gap: 12px;
+}
+
+textarea,
+select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #0ea5e9;
+  color: white;
+  margin-top: 14px;
+  padding: 10px 12px;
+}
+
+.notifications {
+  border-left: 1px solid #dbe3ea;
+  background: white;
+  padding: 18px;
+}

@@ -1,0 +1,34 @@
+node_modules
+**/node_modules
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+uploads/
+recordings/
+
+# Node / web
+.next/
+.expo/
+.turbo/
+dist/
+*.tsbuildinfo
+
+# Generated analysis / alternate local scaffolds
+avivavirtual-platform/
+
+# Local environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --line: #dbe3ea;
+  --text: #1f2937;
+  --muted: #64748b;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #111827;
+  --panel: #182231;
+  --line: #334155;
+  --text: #f8fafc;
+  --muted: #cbd5e1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.focus-ring:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.35);
+  outline-offset: 2px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}

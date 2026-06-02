@@ -1,0 +1,11 @@
+[package]
+name = "avivavirtual-agent"
+version = "1.0.0"
+description = "Avivavirtual Agent Desktop"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
