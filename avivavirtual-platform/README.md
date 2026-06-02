@@ -10,7 +10,7 @@ Avivavirtual is a multi-tenant, AI-powered customer care SaaS platform for Canad
 - **packages/config**: Shared TypeScript/ESLint/Tailwind configs.
 - **prisma/**: schema, migrations, and seed script.
 - **docker-compose.yml**: local platform stack (Postgres, Redis, API, Web).
-
+ 
 ## Architecture Diagrams
 https://mermaid.ai/d/5f3d588d-c7ed-44ea-8437-9dc14c0b89b8
 ### System Context Diagram
