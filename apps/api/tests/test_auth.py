@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from jose import jwt
 
@@ -30,4 +30,4 @@ def test_access_token_contains_tenant_payload() -> None:
     assert decoded["sub"] == user.id
     assert decoded["orgId"] == "org-1"
     assert decoded["role"] == "AGENT"
-    assert decoded["exp"] > int(datetime.utcnow().timestamp())
+    assert decoded["exp"] > int(datetime.now(timezone.utc).timestamp())

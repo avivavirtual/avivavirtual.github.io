@@ -24,6 +24,7 @@ celery.conf.update(
     timezone="America/Toronto",
     enable_utc=True,
     task_acks_late=True,
+    broker_connection_retry_on_startup=True,
     worker_prefetch_multiplier=1,
     task_routes={
         "tasks.transcription.*": {"queue": "transcription"},

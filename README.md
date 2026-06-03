@@ -573,13 +573,21 @@ cp .env.example .env
 docker compose up --build
 ```
 
-3. Apply migrations and seed demo data:
+3. Create a local Python virtual environment and install API dependencies.
+
+Use Python 3.11 or 3.12 for local development. On macOS, `python` and `pip` are often not installed as commands, so use `python3.12 -m ...` or `python3 -m ...`.
 
 ```bash
-cd apps/api
-alembic upgrade head
-cd ../..
-python seed.py
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r apps/api/requirements.txt
+```
+
+4. Apply migrations and seed demo data:
+
+```bash
+.venv/bin/python -m alembic -c alembic.ini upgrade head
+.venv/bin/python seed.py
 ```
 
 Demo accounts:
@@ -597,8 +605,15 @@ API:
 
 ```bash
 cd apps/api
-pip install -r requirements.txt
-uvicorn main:socket_app --reload --host 0.0.0.0 --port 3001
+../../.venv/bin/python -m uvicorn main:socket_app --reload --host 0.0.0.0 --port 3001
+```
+
+If you have not created the virtual environment yet, run this once from the repository root:
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r apps/api/requirements.txt
 ```
 
 Web:

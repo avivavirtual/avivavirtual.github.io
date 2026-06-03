@@ -1,6 +1,17 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
-RUN apt-get update && apt-get install -y ffmpeg curl \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    curl \
+    build-essential \
+    pkg-config \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavfilter-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswresample-dev \
+    libswscale-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

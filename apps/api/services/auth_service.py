@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
 from typing import Any
@@ -30,7 +30,7 @@ def refresh_hash(token: str) -> str:
 
 
 def access_token_for(user: User) -> str:
-    exp = datetime.utcnow() + timedelta(seconds=settings.JWT_EXPIRES_IN)
+    exp = int((datetime.now(timezone.utc) + timedelta(seconds=settings.JWT_EXPIRES_IN)).timestamp())
     payload: dict[str, Any] = {
         "sub": user.id,
         "orgId": user.organization_id,
