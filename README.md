@@ -26,6 +26,7 @@ seed.py      demo seed script
 ### System Context Diagram (C4 Level 1)
 
 This context view shows the external people and systems around the Avivavirtual platform. The platform boundary contains the SaaS application and the preserved public static site. The red-highlighted path is the core customer-to-AI support path through the widget and platform.
+```mermaid
 flowchart TD
   %% Avivavirtual Detailed Architecture
 
@@ -218,6 +219,8 @@ flowchart TD
   class OpenAI,Whisper ai
   class VoIPMS,SMTP,GitHubPages,DNS,HTTPS external
   class Widget,FastAPI,ConvSvc,KBSvc,AISvc,Postgres,OpenAI,SocketIO critical
+```
+
 ```mermaid
 flowchart TD
   classDef critical fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d
