@@ -8,7 +8,7 @@ from config import settings
 from database import get_db
 from middleware.auth import get_current_user
 from middleware.tenant import scoped_org
-from models import AgentSipCredentials, CallRecord, CallbackRequest, TranscriptionStatus
+from models import AgentSipCredentials, CallRecord, CallbackRequest, Organization, TranscriptionStatus
 from schemas import CallbackCreate
 from services.audit_service import audit
 from services.voipms_service import decrypt_secret, get_dids_info, get_sub_accounts
@@ -95,6 +95,8 @@ async def callback_requests(db: AsyncSession = Depends(get_db), current_user=Dep
 
 @router.post("/callback-requests", status_code=201)
 async def callback_request(payload: CallbackCreate, organization_id: str, db: AsyncSession = Depends(get_db)):
+    if not await db.get(Organization, organization_id):
+        raise HTTPException(404, "Organization not found")
     item = CallbackRequest(organization_id=organization_id, **payload.model_dump())
     db.add(item)
     return item

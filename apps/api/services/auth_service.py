@@ -13,6 +13,7 @@ from config import settings
 from models import AISettings, ChatWidget, ClientSettings, Organization, RefreshToken, SLAConfig, User, UserRole
 from schemas import ForgotPasswordIn, LoginIn, RefreshIn, RegisterIn, ResetPasswordIn
 from services.audit_service import audit
+from services.email_service import send_email
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=settings.BCRYPT_ROUNDS)
 
@@ -40,6 +41,11 @@ def access_token_for(user: User) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
+def _utcnow_naive() -> datetime:
+    """Naive UTC timestamp matching the naive `datetime` columns used for token expiry."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 async def _create_refresh(db: AsyncSession, user: User, ip_address: str | None, user_agent: str | None) -> str:
     token = secrets.token_urlsafe(48)
     db.add(
@@ -47,7 +53,7 @@ async def _create_refresh(db: AsyncSession, user: User, ip_address: str | None, 
             user_id=user.id,
             organization_id=user.organization_id,
             token_hash=refresh_hash(token),
-            expires_at=datetime.utcnow() + timedelta(seconds=settings.JWT_REFRESH_EXPIRES_IN),
+            expires_at=_utcnow_naive() + timedelta(seconds=settings.JWT_REFRESH_EXPIRES_IN),
             ip_address=ip_address,
             user_agent=user_agent,
         )
@@ -108,7 +114,7 @@ async def login(db: AsyncSession, payload: LoginIn, ip_address: str | None, user
 async def refresh(db: AsyncSession, payload: RefreshIn, ip_address: str | None, user_agent: str | None) -> dict:
     token_hash = refresh_hash(payload.refresh_token)
     stored = (await db.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))).scalar_one_or_none()
-    if not stored or stored.revoked_at or stored.expires_at < datetime.utcnow():
+    if not stored or stored.revoked_at or stored.expires_at < _utcnow_naive():
         raise HTTPException(401, "Invalid refresh token")
     user = await db.get(User, stored.user_id)
     if not user or not user.is_active:
@@ -132,9 +138,20 @@ async def logout(db: AsyncSession, user: User) -> dict:
 async def forgot_password(db: AsyncSession, payload: ForgotPasswordIn) -> dict:
     user = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
     if user:
-        user.password_reset_token = secrets.token_urlsafe(32)
-        user.password_reset_expiry = datetime.utcnow() + timedelta(hours=1)
+        token = secrets.token_urlsafe(32)
+        user.password_reset_token = refresh_hash(token)
+        user.password_reset_expiry = _utcnow_naive() + timedelta(hours=1)
         user.updated_at = datetime.utcnow()
+        reset_url = f"{settings.WEB_APP_URL}/reset-password?token={token}"
+        await send_email(
+            user.email,
+            "Reset your Avivavirtual password",
+            f"<p>We received a request to reset your password.</p>"
+            f'<p><a href="{reset_url}">Click here to choose a new password</a>. '
+            f"This link expires in 1 hour.</p>"
+            f"<p>If you didn't request this, you can safely ignore this email.</p>",
+            f"Reset your password: {reset_url} (expires in 1 hour)",
+        )
     return {"ok": True}
 
 
@@ -142,8 +159,8 @@ async def reset_password(db: AsyncSession, payload: ResetPasswordIn) -> dict:
     user = (
         await db.execute(
             select(User).where(
-                User.password_reset_token == payload.token,
-                User.password_reset_expiry > datetime.utcnow(),
+                User.password_reset_token == refresh_hash(payload.token),
+                User.password_reset_expiry > _utcnow_naive(),
             )
         )
     ).scalar_one_or_none()

@@ -1,5 +1,5 @@
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, UploadFile
 import aiofiles
@@ -38,6 +38,10 @@ async def store_upload(file: UploadFile) -> dict:
 
 
 def resolve_file(file_id: str) -> Path | None:
+    try:
+        UUID(file_id)
+    except ValueError:
+        return None
     root = Path(settings.LOCAL_STORAGE_PATH)
     matches = list(root.glob(f"{file_id}-*"))
     return matches[0] if matches else None

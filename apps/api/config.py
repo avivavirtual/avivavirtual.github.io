@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     NODE_ENV: str = "development"
     API_PORT: int = 3001
     API_URL: str = "http://localhost:3001"
+    WEB_APP_URL: str = "http://localhost:3000"
     CORS_ORIGINS: str = "http://localhost:3000"
 
     DATABASE_URL: str = "postgresql+asyncpg://aviva_user:aviva_password@localhost:5432/avivavirtual_db"

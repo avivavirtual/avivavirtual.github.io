@@ -15,7 +15,8 @@ target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:
-    context.configure(url=settings.DATABASE_URL, target_metadata=target_metadata, literal_binds=True)
+    sync_url = settings.DATABASE_URL.replace("+asyncpg", "")
+    context.configure(url=sync_url, target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
         context.run_migrations()
 

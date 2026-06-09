@@ -3,15 +3,15 @@ services:
     image: pgvector/pgvector:pg15
     restart: unless-stopped
     environment:
-      POSTGRES_DB: avivavirtual_db
-      POSTGRES_USER: aviva_user
-      POSTGRES_PASSWORD: aviva_password
+      POSTGRES_DB: ${POSTGRES_DB:-avivavirtual_db}
+      POSTGRES_USER: ${POSTGRES_USER:-aviva_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aviva_password}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aviva_user -d avivavirtual_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aviva_user} -d ${POSTGRES_DB:-avivavirtual_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql+asyncpg://aviva_user:aviva_password@postgres:5432/avivavirtual_db
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aviva_user}:${POSTGRES_PASSWORD:-aviva_password}@postgres:5432/${POSTGRES_DB:-avivavirtual_db}
       REDIS_URL: redis://redis:6379
       WHISPER_SELF_HOSTED_URL: http://whisper:8000
 
@@ -59,7 +59,7 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql+asyncpg://aviva_user:aviva_password@postgres:5432/avivavirtual_db
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aviva_user}:${POSTGRES_PASSWORD:-aviva_password}@postgres:5432/${POSTGRES_DB:-avivavirtual_db}
       REDIS_URL: redis://redis:6379
       WHISPER_SELF_HOSTED_URL: http://whisper:8000
     healthcheck:
@@ -79,7 +79,7 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql+asyncpg://aviva_user:aviva_password@postgres:5432/avivavirtual_db
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aviva_user}:${POSTGRES_PASSWORD:-aviva_password}@postgres:5432/${POSTGRES_DB:-avivavirtual_db}
       REDIS_URL: redis://redis:6379
     healthcheck:
       test: ["NONE"]

@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import AgentStatus, Conversation, ConversationStatus, Customer, Language, Message, SenderType, User
+from models import AgentStatus, Conversation, ConversationStatus, Customer, Language, Message, Organization, SenderType, User
 from schemas import AgentMessage, AssignConversation, RateConversation, WidgetMessage, WidgetStart
 from services import ai_service
 from services.notification_service import create_notification
@@ -55,6 +55,8 @@ async def message_history(db: AsyncSession, conversation_id: str, org_id: str) -
 
 
 async def start_widget(db: AsyncSession, org_id: str, payload: WidgetStart) -> dict:
+    if not await db.get(Organization, org_id):
+        raise HTTPException(404, "Organization not found")
     if not payload.consent:
         raise HTTPException(400, "PIPEDA consent is required before support starts")
     names = payload.name.split(" ", 1)
@@ -94,7 +96,7 @@ async def start_widget(db: AsyncSession, org_id: str, payload: WidgetStart) -> d
             await create_notification(db, org_id, agent.user_id, "Support request needs review", payload.message[:160], "REVIEW", "conversation", conversation.id)
     await emit_new_message(conversation.id, {"id": customer_msg.id, "content": customer_msg.content, "sender_type": "CUSTOMER"})
     await emit_new_message(conversation.id, {"id": ai_msg.id, "content": ai_msg.content, "sender_type": "AI", "confidence": result.confidence})
-    await emit_conversation_updated(org_id, conversation.model_dump())
+    await emit_conversation_updated(org_id, conversation.model_dump(mode="json"))
     return {"conversation": conversation, "message": ai_msg, "should_handoff": result.should_handoff}
 
 
@@ -102,6 +104,8 @@ async def widget_message(db: AsyncSession, conv_id: str, payload: WidgetMessage)
     conversation = await db.get(Conversation, conv_id)
     if not conversation:
         raise HTTPException(404, "Conversation not found")
+    if conversation.status == ConversationStatus.CLOSED:
+        raise HTTPException(410, "This conversation has been closed")
     msg = Message(
         organization_id=conversation.organization_id,
         conversation_id=conversation.id,
