@@ -31,14 +31,17 @@ class Settings(BaseSettings):
     BCRYPT_ROUNDS: int = 12
     ENCRYPTION_KEY: str = "dev-encryption-key-change-me-32"
 
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-3.5-turbo"
-    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_OPENAI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
+    GEMINI_EMBEDDING_DIMENSIONS: int = 1536
     AI_CONFIDENCE_THRESHOLD: float = 0.75
 
-    WHISPER_PROVIDER: str = "openai"
+    WHISPER_PROVIDER: str = "self-hosted"
     WHISPER_SELF_HOSTED_URL: str = ""
     WHISPER_API_SECRET: str = ""
+    OPENAI_WHISPER_API_KEY: str = ""
     OPENAI_WHISPER_MODEL: str = "whisper-1"
     MAX_AUDIO_SIZE_MB: int = 25
     STORE_CALL_RECORDINGS: bool = True

@@ -40,4 +40,4 @@ async def language_breakdown(db: AsyncSession, org_id: str) -> dict:
 
 async def transcription_costs(db: AsyncSession, org_id: str) -> dict:
     cost = (await db.execute(select(func.coalesce(func.sum(CallRecord.transcription_cost), 0)).where(CallRecord.organization_id == org_id))).scalar_one()
-    return {"month_cost_cad": float(cost), "provider": "openai/self-hosted"}
+    return {"month_cost_cad": float(cost), "provider": "self-hosted/openai"}

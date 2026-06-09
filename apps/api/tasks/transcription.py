@@ -28,9 +28,14 @@ async def call_whisper(audio_path: str, language: str | None, file_size_bytes: i
             response.raise_for_status()
             return response.json()
 
+    if provider != "openai":
+        raise ValueError(f"Unsupported WHISPER_PROVIDER: {provider}")
+    if not settings.OPENAI_WHISPER_API_KEY:
+        raise ValueError("OPENAI_WHISPER_API_KEY is required when WHISPER_PROVIDER=openai")
+
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=settings.OPENAI_WHISPER_API_KEY)
     with open(audio_path, "rb") as f:
         response = await client.audio.transcriptions.create(
             file=("call.mp3", f, "audio/mpeg"),

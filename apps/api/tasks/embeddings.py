@@ -1,5 +1,6 @@
 import asyncio
 
+import httpx
 from sqlalchemy import delete
 
 from celery_app import celery
@@ -21,13 +22,34 @@ def index_article(self, article_id: str) -> dict:
 
 
 async def _embed_text(parts: list[str]) -> list[list[float]]:
-    if not settings.OPENAI_API_KEY:
-        return [[0.0] * 1536 for _ in parts]
-    from openai import AsyncOpenAI
+    if not settings.GEMINI_API_KEY:
+        return [[0.0] * settings.GEMINI_EMBEDDING_DIMENSIONS for _ in parts]
 
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    response = await client.embeddings.create(model=settings.OPENAI_EMBEDDING_MODEL, input=parts)
-    return [item.embedding for item in response.data]
+    model = settings.GEMINI_EMBEDDING_MODEL.removeprefix("models/")
+    payload = {
+        "requests": [
+            {
+                "model": f"models/{model}",
+                "content": {"parts": [{"text": part}]},
+                "embedContentConfig": {"outputDimensionality": settings.GEMINI_EMBEDDING_DIMENSIONS},
+            }
+            for part in parts
+        ]
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:batchEmbedContents",
+            headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+            json=payload,
+        )
+        response.raise_for_status()
+    data = response.json()
+    embeddings = [item.get("values", []) for item in data.get("embeddings", [])]
+    if len(embeddings) != len(parts):
+        raise ValueError(f"Gemini returned {len(embeddings)} embeddings for {len(parts)} chunks")
+    if any(len(vector) != settings.GEMINI_EMBEDDING_DIMENSIONS for vector in embeddings):
+        raise ValueError("Gemini embedding dimensions do not match GEMINI_EMBEDDING_DIMENSIONS")
+    return embeddings
 
 
 async def _index_article(article_id: str) -> dict:

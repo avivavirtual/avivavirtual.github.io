@@ -38,7 +38,7 @@ jobs:
           JWT_SECRET: ci-test-jwt-secret-key-32-chars
           JWT_REFRESH_SECRET: ci-test-refresh-secret-32-chars
           ENCRYPTION_KEY: ci-test-encryption-key-32-chars
-          OPENAI_API_KEY: sk-test-not-real
+          GEMINI_API_KEY: gemini-test-not-real
       - run: pytest tests/ -v --asyncio-mode=auto
         working-directory: apps/api
         env:
@@ -47,7 +47,7 @@ jobs:
           JWT_SECRET: ci-test-jwt-secret-key-32-chars
           JWT_REFRESH_SECRET: ci-test-refresh-secret-32-chars
           ENCRYPTION_KEY: ci-test-encryption-key-32-chars
-          OPENAI_API_KEY: sk-test-not-real
+          GEMINI_API_KEY: gemini-test-not-real
 
   test-web:
     runs-on: ubuntu-latest

@@ -104,7 +104,7 @@ flowchart TD
 
   %% AI/Voice
   subgraph INTELLIGENCE["🤖 AI + Voice Processing"]
-    OpenAI["🧠 OpenAI API<br/>chat + embeddings"]
+    Gemini["🧠 Gemini API<br/>chat + embeddings"]
     Whisper["🎧 Whisper Service<br/>faster-whisper transcription"]
   end
 
@@ -169,7 +169,7 @@ flowchart TD
   ConvSvc --> Postgres
   TicketSvc --> Postgres
   KBSvc --> Postgres
-  AISvc --> OpenAI
+  AISvc --> Gemini
   AISvc --> KBSvc
   VoIPSvc --> VoIPMS
   AnalyticsSvc --> Postgres
@@ -186,7 +186,7 @@ flowchart TD
   CeleryWorker --> Uploads
   CeleryWorker --> Recordings
   CeleryWorker --> Whisper
-  CeleryWorker --> OpenAI
+  CeleryWorker --> Gemini
 
   %% Storage
   FastAPI --> Uploads
@@ -207,7 +207,7 @@ flowchart TD
   ConvSvc ==>|"3. retrieve KB context"| KBSvc
   KBSvc ==>|"4. vector search"| Postgres
   ConvSvc ==>|"5. generate AI answer"| AISvc
-  AISvc ==>|"6. LLM response"| OpenAI
+  AISvc ==>|"6. LLM response"| Gemini
   ConvSvc ==>|"7. realtime update"| SocketIO
   SocketIO ==>|"8. response to visitor/agent"| Widget
 
@@ -216,9 +216,9 @@ flowchart TD
   class FastAPI,SocketIO,Auth,Tenant,Security,Routers,AuthSvc,ConvSvc,TicketSvc,AISvc,KBSvc,VoIPSvc,AnalyticsSvc,AuditSvc,NotifySvc backend
   class Redis,CeleryWorker,CeleryBeat,Flower async
   class Postgres,Uploads,Recordings,Alembic data
-  class OpenAI,Whisper ai
+  class Gemini,Whisper ai
   class VoIPMS,SMTP,GitHubPages,DNS,HTTPS external
-  class Widget,FastAPI,ConvSvc,KBSvc,AISvc,Postgres,OpenAI,SocketIO critical
+  class Widget,FastAPI,ConvSvc,KBSvc,AISvc,Postgres,Gemini,SocketIO critical
 ```
 
 ```mermaid
@@ -242,7 +242,7 @@ flowchart TD
 
   subgraph External["External Systems"]
     VoIP["VoIP.ms"]
-    OpenAI["OpenAI"]
+    Gemini["Gemini"]
     SMTP["SMTP Email"]
     GitHubPages["GitHub Pages"]
   end
@@ -255,12 +255,12 @@ flowchart TD
   Visitor -->|browse HTTPS| StaticSite
   StaticSite -->|hosted by| GitHubPages
   Platform -->|SIP/CDR API| VoIP
-  Platform -->|AI API| OpenAI
+  Platform -->|AI API| Gemini
   Platform -->|notifications| SMTP
 
-  class Visitor,Platform,OpenAI critical
+  class Visitor,Platform,Gemini critical
   class Platform,StaticSite boundary
-  class VoIP,OpenAI,SMTP,GitHubPages external
+  class VoIP,Gemini,SMTP,GitHubPages external
 ```
 
 ### Container Diagram (C4 Level 2)
@@ -306,7 +306,7 @@ flowchart TD
 
   subgraph External["External Systems"]
     VoIP["VoIP.ms"]
-    OpenAI["OpenAI"]
+    Gemini["Gemini"]
     SMTP["SMTP Email"]
   end
 
@@ -322,13 +322,13 @@ flowchart TD
   API -->|enqueue Redis| Redis
   API -->|store files| Files
   API -->|VoIP API| VoIP
-  API -->|AI API| OpenAI
+  API -->|AI API| Gemini
   API -->|SMTP| SMTP
   Worker -->|dequeue Redis| Redis
   Worker -->|SQL asyncpg| Postgres
   Worker -->|read/write| Files
   Worker -->|transcribe HTTP| Whisper
-  Worker -->|summarize API| OpenAI
+  Worker -->|summarize API| Gemini
   Beat -->|schedule jobs| Redis
   Flower -->|monitor Redis| Redis
   Whisper -->|model cache| Files
@@ -339,11 +339,11 @@ flowchart TD
   Mac -->|imports| Shared
   StaticSite -->|links to| Web
 
-  class Widget,API,Postgres,OpenAI critical
+  class Widget,API,Postgres,Gemini critical
   class Web,Widget,Mobile,Mac,StaticSite app
   class API,SocketIO,Worker,Beat,Flower,Whisper backend
   class Postgres,Redis,Files data
-  class VoIP,OpenAI,SMTP external
+  class VoIP,Gemini,SMTP external
 ```
 
 ### Component Diagram (C4 Level 3)
@@ -556,7 +556,7 @@ flowchart TD
 
 - Core patterns: monorepo with multiple client apps, API-centered service layer, repository-style SQLModel persistence, event-driven async jobs through Celery/Redis, and widget-first AI support.
 - Scalability: Next.js web, FastAPI API, Celery workers, Redis, PostgreSQL, and Whisper can scale independently. Worker queues can be split by transcription, summarization, embeddings, and SLA workloads.
-- Potential SPOFs: single PostgreSQL instance, single Redis broker, single API instance, local file volumes for recordings/uploads, and external dependency availability for VoIP.ms/OpenAI/SMTP.
+- Potential SPOFs: single PostgreSQL instance, single Redis broker, single API instance, local file volumes for recordings/uploads, and external dependency availability for VoIP.ms/Gemini/SMTP.
 - Suggested improvements: add managed Postgres replicas/backups, Redis HA, object storage for recordings, API autoscaling, queue-specific workers, health checks with alerting, and production auth backed by server-side sessions or JWT refresh rotation.
 
 ## Quick Start
@@ -645,7 +645,7 @@ docker compose up --build
 
 ## Backend
 
-The backend uses FastAPI 0.109, SQLModel, PostgreSQL 15 with pgvector, Redis, Celery, python-socketio, JWT auth, VoIP.ms wrappers, OpenAI/Whisper integration, and PIPEDA-focused retention jobs.
+The backend uses FastAPI 0.109, SQLModel, PostgreSQL 15 with pgvector, Redis, Celery, python-socketio, JWT auth, VoIP.ms wrappers, Gemini/Whisper integration, and PIPEDA-focused retention jobs.
 
 Core routes are mounted under `/api/v1`:
 
@@ -683,10 +683,10 @@ Limitations:
 Call flow:
 
 ```text
-VoIP.ms CDR sync -> download MP3 -> Whisper transcription -> GPT summary -> WebSocket notification
+VoIP.ms CDR sync -> download MP3 -> Whisper transcription -> Gemini summary -> WebSocket notification
 ```
 
-Set `WHISPER_PROVIDER=openai` for OpenAI Whisper API or `WHISPER_PROVIDER=self-hosted` for `apps/whisper`.
+Default transcription uses `WHISPER_PROVIDER=self-hosted` with `apps/whisper`. Set `WHISPER_PROVIDER=openai` and `OPENAI_WHISPER_API_KEY` only if you want the OpenAI Whisper API instead.
 
 Default retention:
 
