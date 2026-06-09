@@ -77,7 +77,7 @@ async def start_widget(db: AsyncSession, org_id: str, payload: WidgetStart) -> d
     db.add(customer_msg)
     result = await ai_service.chat(db, org_id, payload.message, conversation)
     conversation.is_handed_off = result.should_handoff
-    conversation.handoff_reason = "LOW_CONFIDENCE" if result.should_handoff else None
+    conversation.handoff_reason = result.handoff_reason if result.should_handoff else None
     conversation.updated_at = datetime.utcnow()
     ai_msg = Message(
         organization_id=org_id,
@@ -112,7 +112,7 @@ async def widget_message(db: AsyncSession, conv_id: str, payload: WidgetMessage)
     db.add(msg)
     result = await ai_service.chat(db, conversation.organization_id, payload.message, conversation)
     conversation.is_handed_off = conversation.is_handed_off or result.should_handoff
-    conversation.handoff_reason = "LOW_CONFIDENCE" if result.should_handoff else conversation.handoff_reason
+    conversation.handoff_reason = result.handoff_reason if result.should_handoff else conversation.handoff_reason
     ai_msg = Message(
         organization_id=conversation.organization_id,
         conversation_id=conversation.id,

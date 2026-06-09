@@ -657,6 +657,18 @@ Core routes are mounted under `/api/v1`:
 
 Tenant isolation is enforced in protected services by filtering organization-scoped queries with `organization_id`.
 
+### RAG Retrieval
+
+The AI chat path uses deterministic multi-hop retrieval before answering from approved knowledge-base content:
+
+- Query decomposition keeps the original question and splits obvious multi-intent questions into subqueries.
+- Retrieval fuses per-subquery matches from embedding chunks when available, with article-content fallback when the embedding index is empty or partial.
+- Context-window-aware augmentation packs retrieved chunks under `RAG_CONTEXT_WINDOW_TOKENS`, `RAG_RESPONSE_TOKEN_BUDGET`, and `RAG_MAX_CONTEXT_TOKENS`.
+- Explicit no-results handling returns `retrieval_status="NO_RESULTS"` and sets `handoff_reason="NO_RESULTS"` instead of treating missing sources as low confidence.
+- Retrieval SPOF mitigation is intentionally local: if Celery/embedding indexing lags, chat still searches approved article content and exposes a `retrieval_warnings` value.
+
+Kaggle datasource experimentation is available through `POST /api/v1/knowledge-base/experiments/kaggle/upload` with a CSV upload. The typo-compatible `/experiments/keggle/upload` alias maps to the same importer. Imported rows are tagged with `source_type="kaggle"` plus `source_name`, `source_uri`, and `source_metadata`.
+
 ## VoIP.ms Configuration
 
 1. Log in to VoIP.ms, open API Settings, and enable API access.

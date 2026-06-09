@@ -39,6 +39,10 @@ class KnowledgeBaseArticle(SQLModel, table=True):
     language: str = "EN"
     status: ArticleStatus = ArticleStatus.DRAFT
     embedding_status: EmbeddingStatus = EmbeddingStatus.PENDING
+    source_type: str = Field(default="manual", index=True)
+    source_name: Optional[str] = None
+    source_uri: Optional[str] = None
+    source_metadata: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False, default=dict))
     published_at: Optional[datetime] = None
     created_by_id: Optional[str] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -59,6 +63,10 @@ class KnowledgeBaseFile(SQLModel, table=True):
     size_bytes: int
     storage_url: str
     extracted_text: Optional[str] = None
+    source_type: str = Field(default="upload", index=True)
+    source_name: Optional[str] = None
+    source_uri: Optional[str] = None
+    source_metadata: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False, default=dict))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

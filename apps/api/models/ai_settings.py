@@ -13,6 +13,10 @@ class AISettings(SQLModel, table=True):
     confidence_threshold: float = 0.75
     model: str = "gpt-3.5-turbo"
     embedding_model: str = "text-embedding-3-small"
+    retrieval_top_k: int = 5
+    max_response_tokens: int = 600
+    context_window_tokens: int = 8192
+    max_context_tokens: int = 1800
     enabled_languages: str = "EN,FR"
     auto_handoff_enabled: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -123,6 +123,8 @@ CREATE TABLE "AISettings" (
     "chatModel" TEXT NOT NULL DEFAULT 'gpt-4o-mini',
     "suggestionModel" TEXT NOT NULL DEFAULT 'gpt-4o',
     "maxResponseTokens" INTEGER NOT NULL DEFAULT 600,
+    "contextWindowTokens" INTEGER NOT NULL DEFAULT 8192,
+    "maxContextTokens" INTEGER NOT NULL DEFAULT 1800,
     "enableIntentClassify" BOOLEAN NOT NULL DEFAULT true,
     "enableAgenticTools" BOOLEAN NOT NULL DEFAULT true,
     "enableVoiceAI" BOOLEAN NOT NULL DEFAULT false,
@@ -297,6 +299,10 @@ CREATE TABLE "KnowledgeBaseArticle" (
     "tags" TEXT[],
     "category" TEXT,
     "sourceFileId" TEXT,
+    "sourceType" TEXT NOT NULL DEFAULT 'manual',
+    "sourceName" TEXT,
+    "sourceUri" TEXT,
+    "sourceMetadata" JSONB NOT NULL DEFAULT '{}',
     "reviewedBy" TEXT,
     "publishedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -317,6 +323,10 @@ CREATE TABLE "KnowledgeBaseFile" (
     "pageCount" INTEGER,
     "processingStatus" TEXT NOT NULL DEFAULT 'pending',
     "articleIds" TEXT[],
+    "sourceType" TEXT NOT NULL DEFAULT 'upload',
+    "sourceName" TEXT,
+    "sourceUri" TEXT,
+    "sourceMetadata" JSONB NOT NULL DEFAULT '{}',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -550,6 +560,12 @@ CREATE UNIQUE INDEX "Customer_organizationId_email_key" ON "Customer"("organizat
 
 -- CreateIndex
 CREATE UNIQUE INDEX "KnowledgeBaseArticle_organizationId_title_key" ON "KnowledgeBaseArticle"("organizationId", "title");
+
+-- CreateIndex
+CREATE INDEX "KnowledgeBaseArticle_sourceType_idx" ON "KnowledgeBaseArticle"("sourceType");
+
+-- CreateIndex
+CREATE INDEX "KnowledgeBaseFile_sourceType_idx" ON "KnowledgeBaseFile"("sourceType");
 
 -- CreateIndex
 CREATE INDEX "Embedding_organizationId_idx" ON "Embedding"("organizationId");

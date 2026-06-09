@@ -10,6 +10,10 @@ class ArticleCreate(BaseModel):
     content: str
     tags: str = ""
     language: str = Field(default="EN", pattern="^(EN|FR)$")
+    source_type: str = "manual"
+    source_name: Optional[str] = None
+    source_uri: Optional[str] = None
+    source_metadata: dict = Field(default_factory=dict)
 
 
 class ArticlePatch(BaseModel):
@@ -18,6 +22,10 @@ class ArticlePatch(BaseModel):
     tags: Optional[str] = None
     language: Optional[str] = Field(default=None, pattern="^(EN|FR)$")
     status: Optional[ArticleStatus] = None
+    source_type: Optional[str] = None
+    source_name: Optional[str] = None
+    source_uri: Optional[str] = None
+    source_metadata: Optional[dict] = None
 
 
 class SearchQuery(BaseModel):

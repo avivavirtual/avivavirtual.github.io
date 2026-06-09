@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-3.5-turbo"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     AI_CONFIDENCE_THRESHOLD: float = 0.75
+    RAG_RETRIEVAL_TOP_K: int = 5
+    RAG_MAX_SUBQUERIES: int = 4
+    RAG_CONTEXT_WINDOW_TOKENS: int = 8192
+    RAG_RESPONSE_TOKEN_BUDGET: int = 600
+    RAG_MAX_CONTEXT_TOKENS: int = 1800
 
     WHISPER_PROVIDER: str = "openai"
     WHISPER_SELF_HOSTED_URL: str = ""
